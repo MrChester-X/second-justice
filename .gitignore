@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Скриншоты и артефакты Playwright
+.playwright-mcp/
+*.png
+
+# Локальные настройки npm: кэш вынесен на диск D, так как на C нет места.
+# Машинозависимо, в репозиторий не попадает.
+.npmrc
+
+# Локальные настройки IDE
+.idea/
