@@ -8,20 +8,16 @@ import { checkSanctionBounds, checkScaleLimits } from "@/lib/rules";
 import { computeStatistics } from "@/lib/stats";
 import { statusFromChecks, STATUS_NAMES } from "@/lib/api/analysis";
 import { useSession } from "@/lib/store/session";
-import { formatDateTime, formatFileSize } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
+import { l } from "@/lib/i18n/text";
 import { ParamsTab } from "./ParamsTab";
 import { ChecksTab } from "./ChecksTab";
 import { SimilarTab } from "./SimilarTab";
 import { ConclusionTab } from "./ConclusionTab";
 
-const TABS = [
-  { id: "params", label: "Параметры дела" },
-  { id: "checks", label: "Проверка соответствия" },
-  { id: "similar", label: "Аналогичные приговоры" },
-  { id: "conclusion", label: "Заключение" },
-] as const;
+const TAB_IDS = ["params", "checks", "similar", "conclusion"] as const;
 
-type TabId = (typeof TABS)[number]["id"];
+type TabId = (typeof TAB_IDS)[number];
 
 const STATUS_TONE: Record<string, string> = {
   ok: "text-ok",
@@ -32,6 +28,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 export function Workspace({ caseFile }: { caseFile: CaseFile }) {
+  const { t, tr, f, locale } = useI18n();
   const analysis = caseFile.analysis;
   const sanction = getSanction(analysis.sanctionKey);
   const originalTerm = analysis.params.punishment.value?.main;
@@ -43,7 +40,7 @@ export function Workspace({ caseFile }: { caseFile: CaseFile }) {
 
   useEffect(() => {
     setGeneratedAt(
-      new Date().toLocaleString("ru-RU", {
+      new Date().toLocaleString(locale === "ru" ? "ru-RU" : "en-GB", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -51,7 +48,7 @@ export function Workspace({ caseFile }: { caseFile: CaseFile }) {
         minute: "2-digit",
       }),
     );
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     if (tab === "conclusion") markReported(caseFile.id);
@@ -71,12 +68,20 @@ export function Workspace({ caseFile }: { caseFile: CaseFile }) {
         : {
             id: "live-sanction",
             group: "sanction" as const,
-            title: "Наказание не извлечено",
+            title: l(
+              "Наказание не извлечено",
+              "The punishment was not extracted",
+            ),
             norm: sanction.label,
             verdict: "warning" as const,
-            summary: "Укажите вид и размер наказания вручную.",
-            detail:
+            summary: l(
+              "Укажите вид и размер наказания вручную.",
+              "Enter the type and amount of punishment manually.",
+            ),
+            detail: l(
               "Проверка пределов санкции невозможна без сведений о назначенном наказании.",
+              "The limits of the sanction cannot be checked without details of the punishment imposed.",
+            ),
           },
     [sanction, term],
   );
@@ -120,29 +125,40 @@ export function Workspace({ caseFile }: { caseFile: CaseFile }) {
       <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border border-rule bg-paper px-4 py-2.5 text-xs">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-ink-2">
           <span>
-            Документ:{" "}
+            {t.workspace.documentLabel}:{" "}
             <span className="font-mono text-ink">{caseFile.fileName}</span>
           </span>
-          <span>{formatFileSize(caseFile.fileSize)}</span>
-          <span>{caseFile.pages} с.</span>
-          <span>загружен {formatDateTime(caseFile.uploadedAt)}</span>
+          <span>{f.fileSize(caseFile.fileSize)}</span>
+          <span>{t.dashboard.pages(caseFile.pages)}</span>
+          <span>
+            {t.workspace.uploadedAt} {f.dateTime(caseFile.uploadedAt)}
+          </span>
         </div>
-        <span className={clsx("font-bold uppercase tracking-eyebrow", STATUS_TONE[status])}>
-          {STATUS_NAMES[status]}
+        <span
+          className={clsx(
+            "font-bold uppercase tracking-eyebrow",
+            STATUS_TONE[status],
+          )}
+        >
+          {tr(STATUS_NAMES[status])}
         </span>
       </div>
 
       <div className="no-print mb-5 border-b border-rule">
-        <div role="tablist" aria-label="Разделы анализа" className="flex flex-wrap">
-          {TABS.map((item) => {
-            const active = tab === item.id;
+        <div
+          role="tablist"
+          aria-label={t.workspace.tablist}
+          className="flex flex-wrap"
+        >
+          {TAB_IDS.map((id) => {
+            const active = tab === id;
             return (
               <button
-                key={item.id}
+                key={id}
                 role="tab"
                 type="button"
                 aria-selected={active}
-                onClick={() => setTab(item.id)}
+                onClick={() => setTab(id)}
                 className={clsx(
                   "-mb-px border-b-2 px-4 py-2.5 font-sans text-sm transition-colors",
                   active
@@ -150,7 +166,7 @@ export function Workspace({ caseFile }: { caseFile: CaseFile }) {
                     : "border-transparent text-ink-2 hover:border-rule hover:text-navy",
                 )}
               >
-                {item.label}
+                {t.workspace.tabs[id]}
               </button>
             );
           })}
@@ -186,16 +202,13 @@ export function Workspace({ caseFile }: { caseFile: CaseFile }) {
       {tab === "conclusion" ? (
         <>
           <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3 border border-rule bg-mist px-4 py-3">
-            <p className="text-sm text-ink-2">
-              Заключение готово. Для сохранения используйте печать в PDF
-              средствами браузера.
-            </p>
+            <p className="text-sm text-ink-2">{t.workspace.printHint}</p>
             <button
               type="button"
               onClick={() => window.print()}
               className="btn btn-primary"
             >
-              Печать заключения
+              {t.workspace.print}
             </button>
           </div>
           <ConclusionTab

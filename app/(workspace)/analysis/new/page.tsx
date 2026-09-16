@@ -12,9 +12,8 @@ import {
 } from "@/lib/api/analysis";
 import { useSession } from "@/lib/store/session";
 import { caseHref } from "@/lib/routes";
-import { formatFileSize } from "@/lib/format";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { useChromeLabels } from "@/lib/theme/labels";
+import { useI18n } from "@/lib/i18n";
 import { Panel, PanelHead } from "@/components/ui/primitives";
 import type { CaseStatus } from "@/lib/types";
 
@@ -29,7 +28,7 @@ const STATUS_TONE: Record<CaseStatus, string> = {
 };
 
 export default function NewAnalysisPage() {
-  const labels = useChromeLabels();
+  const { t, tr, f } = useI18n();
   const router = useRouter();
   const addCase = useSession((s) => s.addCase);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -44,13 +43,11 @@ export default function NewAnalysisPage() {
   async function handleFile(file: File) {
     const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
     if (!ACCEPTED.includes(extension)) {
-      setError(
-        `Формат ${extension || "без расширения"} не поддерживается. Загрузите документ в формате ${ACCEPTED.join(", ")}.`,
-      );
+      setError(t.upload.errorFormat(extension, ACCEPTED.join(", ")));
       return;
     }
     if (file.size === 0) {
-      setError("Файл пустой. Проверьте документ и повторите загрузку.");
+      setError(t.upload.errorEmpty);
       return;
     }
 
@@ -76,12 +73,12 @@ export default function NewAnalysisPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Рабочая область анализа"
-        title="Загрузка проекта судебного акта"
-        lead="Загрузите проект приговора в машиночитаемом виде. Система извлечёт квалификацию, сведения о личности подсудимого, обстоятельства дела и назначенное наказание, после чего проверит решение на соответствие закону и практике."
+        eyebrow={t.workspace.eyebrow}
+        title={t.upload.title}
+        lead={t.upload.lead}
         crumbs={[
-          { href: "/dashboard", label: "Личный кабинет" },
-          { label: "Новая проверка" },
+          { href: "/dashboard", label: t.nav.dashboard },
+          { label: t.nav.newCheck },
         ]}
       />
 
@@ -89,8 +86,8 @@ export default function NewAnalysisPage() {
         <div className="space-y-5">
           <Panel>
             <PanelHead
-              title="Документ"
-              aside={`форматы: ${ACCEPTED.join(", ")}`}
+              title={t.upload.documentTitle}
+              aside={t.upload.formats(ACCEPTED.join(", "))}
             />
             <div className="px-4 py-4">
               <div
@@ -108,25 +105,21 @@ export default function NewAnalysisPage() {
                 }}
                 className={clsx(
                   "border-2 border-dashed px-6 py-10 text-center transition-colors",
-                  dragging
-                    ? "border-navy bg-navy-pale"
-                    : "border-rule bg-mist",
+                  dragging ? "border-navy bg-navy-pale" : "border-rule bg-mist",
                   running && "opacity-60",
                 )}
               >
                 <p className="font-serif text-lg text-navy">
-                  Перетащите файл в эту область
+                  {t.upload.dropHere}
                 </p>
-                <p className="mt-1 text-sm text-ink-2">
-                  или выберите документ на диске
-                </p>
+                <p className="mt-1 text-sm text-ink-2">{t.upload.orPick}</p>
                 <button
                   type="button"
                   disabled={running}
                   onClick={() => inputRef.current?.click()}
                   className="btn btn-ghost mt-4"
                 >
-                  Выбрать файл
+                  {t.upload.pickFile}
                 </button>
                 <input
                   ref={inputRef}
@@ -139,9 +132,7 @@ export default function NewAnalysisPage() {
                     event.target.value = "";
                   }}
                 />
-                <p className="mt-4 text-xs text-ink-3">
-                  Документ обрабатывается в браузере и никуда не передаётся.
-                </p>
+                <p className="mt-4 text-xs text-ink-3">{t.upload.localOnly}</p>
               </div>
 
               {error ? (
@@ -158,7 +149,7 @@ export default function NewAnalysisPage() {
           {running ? (
             <Panel>
               <PanelHead
-                title="Обработка документа"
+                title={t.upload.processingTitle}
                 aside={processed ?? undefined}
               />
               <ol className="divide-y divide-hair">
@@ -179,8 +170,8 @@ export default function NewAnalysisPage() {
                           done
                             ? "bg-ok"
                             : active
-                              ? "animate-pulse bg-navy"
-                              : "bg-rule",
+                            ? "animate-pulse bg-navy"
+                            : "bg-rule",
                         )}
                         aria-hidden
                       />
@@ -193,14 +184,18 @@ export default function NewAnalysisPage() {
                               : "text-ink-3",
                           )}
                         >
-                          {stage.label}
+                          {tr(stage.label)}
                         </span>
                         <span className="block text-xs text-ink-3">
-                          {stage.detail}
+                          {tr(stage.detail)}
                         </span>
                       </span>
                       <span className="ml-auto shrink-0 text-2xs uppercase tracking-eyebrow text-ink-3">
-                        {done ? "готово" : active ? "выполняется" : "ожидание"}
+                        {done
+                          ? t.upload.stageDone
+                          : active
+                          ? t.upload.stageRunning
+                          : t.upload.stageWaiting}
                       </span>
                     </li>
                   );
@@ -210,10 +205,7 @@ export default function NewAnalysisPage() {
           ) : null}
 
           <Panel>
-            <PanelHead
-              title="Демонстрационные материалы"
-              aside="подготовленные проекты судебных актов"
-            />
+            <PanelHead title={t.upload.demoTitle} aside={t.upload.demoAside} />
             <ul className="divide-y divide-hair">
               {DEMO_CASES.map((item) => (
                 <li
@@ -225,8 +217,9 @@ export default function NewAnalysisPage() {
                       {item.fileName}
                     </p>
                     <p className="mt-0.5 text-xs text-ink-2">
-                      Дело {item.number} · {item.articleShort} ·{" "}
-                      {item.defendantShort} · {formatFileSize(item.fileSize)}
+                      {t.upload.caseLabel} {tr(item.number)} ·{" "}
+                      {tr(item.articleShort)} · {tr(item.defendantShort)} ·{" "}
+                      {f.fileSize(item.fileSize)}
                     </p>
                   </div>
                   <span
@@ -235,7 +228,7 @@ export default function NewAnalysisPage() {
                       STATUS_TONE[item.status],
                     )}
                   >
-                    {STATUS_NAMES[item.status]}
+                    {tr(STATUS_NAMES[item.status])}
                   </span>
                   <button
                     type="button"
@@ -243,33 +236,22 @@ export default function NewAnalysisPage() {
                     onClick={() => void handleDemo(item.id, item.fileName)}
                     className="btn btn-ghost"
                   >
-                    {labels.runDemo}
+                    {t.upload.runDemo}
                   </button>
                 </li>
               ))}
             </ul>
             <p className="border-t border-hair px-4 py-2.5 text-xs text-ink-3">
-              Материалы подготовлены так, чтобы показать разные исходы проверки:
-              соответствие закону, выход за пределы санкции, отклонение от
-              практики, нерассмотренное основание освобождения от уголовной
-              ответственности и превышение предела, установленного правилами
-              Общей части.
+              {t.upload.demoNote}
             </p>
           </Panel>
         </div>
 
         <div className="space-y-5">
           <Panel>
-            <PanelHead title="Что извлекается из документа" />
+            <PanelHead title={t.upload.extractedTitle} />
             <ul className="space-y-2.5 px-4 py-3 text-sm">
-              {[
-                "Квалификация: статья, часть, дата совершения деяния",
-                "Сведения о личности: возраст, семья, занятость, судимости",
-                "Смягчающие обстоятельства по ст. 61 УК РФ",
-                "Отягчающие обстоятельства по ст. 63 УК РФ",
-                "Процессуальные особенности: гл. 40 и 40.1 УПК РФ",
-                "Назначенное наказание: вид, размер, дополнительное наказание",
-              ].map((item) => (
+              {t.upload.extractedItems.map((item) => (
                 <li key={item} className="grid grid-cols-[0.75rem_1fr] gap-x-2">
                   <span className="mt-2 h-1 w-1.5 bg-navy-soft" aria-hidden />
                   <span className="text-ink-2">{item}</span>
@@ -279,18 +261,10 @@ export default function NewAnalysisPage() {
           </Panel>
 
           <Panel>
-            <PanelHead title="Ограничения прототипа" />
+            <PanelHead title={t.upload.limitsTitle} />
             <div className="space-y-2 px-4 py-3 text-sm leading-relaxed text-ink-2">
-              <p>
-                Извлечение параметров из произвольного документа в прототипе не
-                реализовано. Загруженный файл проходит те же стадии обработки,
-                но результат берётся из демонстрационных материалов; настоящими
-                остаются имя, размер и время загрузки файла.
-              </p>
-              <p>
-                Правовые данные — санкции, разъяснения, статистика — являются
-                справочными и подлежат сверке с официальными источниками.
-              </p>
+              <p>{t.upload.limitsExtraction}</p>
+              <p>{t.upload.limitsData}</p>
             </div>
           </Panel>
         </div>

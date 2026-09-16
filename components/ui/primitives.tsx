@@ -1,7 +1,9 @@
+"use client";
+
 import type { ReactNode } from "react";
 import clsx from "clsx";
 import type { Confidence, Verdict } from "@/lib/types";
-import { CONFIDENCE_NAMES, VERDICT_NAMES } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 export function Panel({
   children,
@@ -50,6 +52,7 @@ export function StatusMark({
   verdict: Verdict;
   className?: string;
 }) {
+  const { f } = useI18n();
   const style = VERDICT_STYLES[verdict];
   return (
     <span
@@ -60,7 +63,7 @@ export function StatusMark({
       )}
     >
       <span className={clsx("h-2 w-2 shrink-0", style.dot)} aria-hidden />
-      {VERDICT_NAMES[verdict]}
+      {f.verdict(verdict)}
     </span>
   );
 }
@@ -89,15 +92,16 @@ const CONFIDENCE_STYLES: Record<Confidence, string> = {
 };
 
 export function ConfidenceMark({ confidence }: { confidence: Confidence }) {
+  const { t, f } = useI18n();
   return (
     <span
       className={clsx(
         "font-sans text-2xs uppercase tracking-eyebrow",
         CONFIDENCE_STYLES[confidence],
       )}
-      title="Достоверность автоматического извлечения"
+      title={t.common.confidenceHint}
     >
-      извлечение: {CONFIDENCE_NAMES[confidence]}
+      {t.common.confidenceLabel}: {f.confidence(confidence)}
     </span>
   );
 }
@@ -123,13 +127,7 @@ export function DataRow({
   );
 }
 
-export function EmptyState({
-  title,
-  hint,
-}: {
-  title: string;
-  hint?: string;
-}) {
+export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="border border-dashed border-rule bg-mist px-4 py-8 text-center">
       <p className="font-serif text-base text-navy">{title}</p>
@@ -138,12 +136,25 @@ export function EmptyState({
   );
 }
 
-/** Цитата из исходного документа, на которой основано извлечение. */
+/**
+ * Цитата из исходного документа, на которой основано извлечение.
+ *
+ * Цитата не переводится: это дословный фрагмент проверяемого акта. В
+ * английском интерфейсе под ней выводится пометка о языке оригинала.
+ */
 export function SourceQuote({ children }: { children: ReactNode }) {
+  const { t, locale } = useI18n();
   return (
-    <blockquote className="border-l-2 border-navy-soft bg-mist px-3 py-2 font-serif text-sm italic text-ink-2">
-      {children}
-    </blockquote>
+    <figure>
+      <blockquote className="border-l-2 border-navy-soft bg-mist px-3 py-2 font-serif text-sm italic text-ink-2">
+        {children}
+      </blockquote>
+      {locale === "ru" ? null : (
+        <figcaption className="mt-1 text-2xs uppercase tracking-eyebrow text-ink-3">
+          {t.common.originalLanguage}
+        </figcaption>
+      )}
+    </figure>
   );
 }
 

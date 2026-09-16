@@ -10,7 +10,8 @@ import { CASE_SEEDS, CASE_SEEDS_BY_ID, type CaseSeed } from "@/lib/data/cases";
 import { SENTENCES } from "@/lib/data/sentences";
 import { getSanction } from "@/lib/data/uk-sanctions";
 import { computeStatistics, scoreSimilarity } from "@/lib/stats";
-import { articleLabel } from "@/lib/format";
+import { FORMAT } from "@/lib/format";
+import { l, type LText } from "@/lib/i18n/text";
 
 /**
  * Мок-слой. Здесь и только здесь прототип «делает вид», что за интерфейсом
@@ -22,56 +23,92 @@ import { articleLabel } from "@/lib/format";
 export const ANALYSIS_STAGES: Stage[] = [
   {
     id: "upload",
-    label: "Приём документа",
-    detail: "Проверка формата и извлечение текстового слоя",
+    label: l("Приём документа", "Receiving the document"),
+    detail: l(
+      "Проверка формата и извлечение текстового слоя",
+      "Checking the format and extracting the text layer",
+    ),
     duration: 500,
   },
   {
     id: "structure",
-    label: "Разбор структуры акта",
-    detail: "Выделение вводной, описательно-мотивировочной и резолютивной частей",
+    label: l("Разбор структуры акта", "Parsing the structure of the judgment"),
+    detail: l(
+      "Выделение вводной, описательно-мотивировочной и резолютивной частей",
+      "Identifying the introductory, reasoning and operative parts",
+    ),
     duration: 600,
   },
   {
     id: "qualification",
-    label: "Извлечение квалификации",
-    detail: "Определение статьи, части и даты совершения деяния",
+    label: l("Извлечение квалификации", "Extracting the legal classification"),
+    detail: l(
+      "Определение статьи, части и даты совершения деяния",
+      "Determining the article, the part and the date of the act",
+    ),
     duration: 550,
   },
   {
     id: "person",
-    label: "Извлечение сведений о личности",
-    detail: "Возраст, семейное положение, занятость, судимости",
+    label: l("Извлечение сведений о личности", "Extracting personal details"),
+    detail: l(
+      "Возраст, семейное положение, занятость, судимости",
+      "Age, marital status, employment, prior convictions",
+    ),
     duration: 500,
   },
   {
     id: "circumstances",
-    label: "Извлечение обстоятельств",
-    detail: "Смягчающие по ст. 61 УК РФ и отягчающие по ст. 63 УК РФ",
+    label: l("Извлечение обстоятельств", "Extracting the circumstances"),
+    detail: l(
+      "Смягчающие по ст. 61 УК РФ и отягчающие по ст. 63 УК РФ",
+      "Mitigating under Art. 61 CC RF and aggravating under Art. 63 CC RF",
+    ),
     duration: 600,
   },
   {
     id: "punishment",
-    label: "Извлечение назначенного наказания",
-    detail: "Вид, размер, дополнительное наказание, условное осуждение",
+    label: l(
+      "Извлечение назначенного наказания",
+      "Extracting the punishment imposed",
+    ),
+    detail: l(
+      "Вид, размер, дополнительное наказание, условное осуждение",
+      "Type, amount, additional punishment, suspended sentence",
+    ),
     duration: 450,
   },
   {
     id: "checks",
-    label: "Проверка по нормам и практике",
-    detail: "Санкция, правила Общей части, раздел IV УК РФ, разъяснения ВС РФ",
+    label: l(
+      "Проверка по нормам и практике",
+      "Checking against the law and practice",
+    ),
+    detail: l(
+      "Санкция, правила Общей части, раздел IV УК РФ, разъяснения ВС РФ",
+      "The sanction, the General Part rules, Section IV CC RF, Supreme Court guidance",
+    ),
     duration: 750,
   },
   {
     id: "similar",
-    label: "Сопоставление с базой судебных решений",
-    detail: "Подбор аналогичных приговоров и расчёт отклонений",
+    label: l(
+      "Сопоставление с базой судебных решений",
+      "Matching against the database of judgments",
+    ),
+    detail: l(
+      "Подбор аналогичных приговоров и расчёт отклонений",
+      "Selecting comparable judgments and computing deviations",
+    ),
     duration: 650,
   },
   {
     id: "conclusion",
-    label: "Формирование заключения",
-    detail: "Аннотация, результаты проверки, статистическая справка",
+    label: l("Формирование заключения", "Preparing the opinion"),
+    detail: l(
+      "Аннотация, результаты проверки, статистическая справка",
+      "Summary, check results, statistical note",
+    ),
     duration: 500,
   },
 ];
@@ -104,13 +141,15 @@ export function statusFromChecks(checks: Check[]): CaseStatus {
   return "ok";
 }
 
-export const STATUS_NAMES: Record<CaseStatus, string> = {
-  draft: "черновик",
-  analyzing: "анализируется",
-  ok: "замечаний нет",
-  warnings: "есть замечания",
-  violations: "выявлены нарушения",
+export const STATUS_NAMES: Record<CaseStatus, LText> = {
+  draft: l("черновик", "draft"),
+  analyzing: l("анализируется", "in analysis"),
+  ok: l("замечаний нет", "no findings"),
+  warnings: l("есть замечания", "caveats found"),
+  violations: l("выявлены нарушения", "violations found"),
 };
+
+const EM_DASH = l("—", "—");
 
 /** Подбор аналогичных приговоров по ключевым параметрам дела. */
 export function findSimilar(seed: CaseSeed): SimilarSentence[] {
@@ -119,7 +158,9 @@ export function findSimilar(seed: CaseSeed): SimilarSentence[] {
   if (!qualification || !punishment) return [];
 
   const target = {
-    article: articleLabel(qualification.article, qualification.part),
+    /* Русская запись статьи служит ключом сопоставления: она не зависит
+       от выбранного языка интерфейса. */
+    article: FORMAT.ru.article(qualification.article, qualification.part),
     kind: punishment.main.kind,
     mitigating: seed.params.mitigating.length,
     aggravating: seed.params.aggravating.length,
@@ -128,7 +169,7 @@ export function findSimilar(seed: CaseSeed): SimilarSentence[] {
     specialOrder: seed.params.procedure.specialOrder,
   };
 
-  return SENTENCES.filter((s) => s.article === target.article)
+  return SENTENCES.filter((s) => s.article.ru === target.article)
     .map((s) => ({ ...s, similarity: scoreSimilarity(s, target) }))
     .sort((a, b) => b.similarity - a.similarity || a.amount - b.amount);
 }
@@ -161,29 +202,36 @@ function buildCase(seed: CaseSeed): CaseFile {
 
   return {
     id: seed.id,
-    number: seed.number,
+    number: l(seed.number, seed.number),
     fileName: seed.fileName,
     fileSize: seed.fileSize,
     pages: seed.pages,
     uploadedAt: seed.uploadedAt,
     status: statusFromChecks(seed.checks),
-    defendantShort: defendant ? shortenFio(defendant.fio) : "—",
+    defendantShort: defendant ? shortenFio(defendant.fio) : EM_DASH,
     articleShort: qualification
-      ? articleLabel(qualification.article, qualification.part)
-      : "—",
+      ? l(
+          FORMAT.ru.article(qualification.article, qualification.part),
+          FORMAT.en.article(qualification.article, qualification.part),
+        )
+      : EM_DASH,
     demo: true,
     analysis,
   };
 }
 
-/** «Соколов Артём Владимирович» → «Соколов А. В.» */
-export function shortenFio(fio: string): string {
+function shortenOne(fio: string): string {
   const [last, first, patronymic] = fio.split(" ");
   const initials = [first, patronymic]
     .filter(Boolean)
     .map((part) => `${part[0]}.`)
     .join(" ");
   return initials ? `${last} ${initials}` : last;
+}
+
+/** «Соколов Артём Владимирович» → «Соколов А. В.» */
+export function shortenFio(fio: LText): LText {
+  return l(shortenOne(fio.ru), shortenOne(fio.en));
 }
 
 /** Реестр демонстрационных дел. */
@@ -225,11 +273,12 @@ export async function analyzeDocument(
 
   const base = DEMO_CASES[0];
   const now = localIsoMinutes(new Date());
+  const day = `${now.slice(8, 10)}.${now.slice(5, 7)}.${now.slice(0, 4)}`;
 
   return {
     ...base,
     id: `upload-${Date.now()}`,
-    number: `б/н от ${now.slice(8, 10)}.${now.slice(5, 7)}.${now.slice(0, 4)}`,
+    number: l(`б/н от ${day}`, `unnumbered, ${day}`),
     fileName: file.name,
     fileSize: file.size,
     pages: Math.max(1, Math.round(file.size / 7500)),

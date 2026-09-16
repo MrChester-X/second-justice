@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { JUDGE } from "@/lib/data/judge";
 import { useSession } from "@/lib/store/session";
-import { formatDate } from "@/lib/format";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { useI18n } from "@/lib/i18n";
 import { Panel, PanelHead } from "@/components/ui/primitives";
 
 export default function ProfilePage() {
+  const { t, tr, f } = useI18n();
   const uploaded = useSession((s) => s.uploaded);
   const reset = useSession((s) => s.reset);
   const [confirming, setConfirming] = useState(false);
@@ -22,64 +23,69 @@ export default function ProfilePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Личный кабинет"
-        title="Профиль и настройки"
-        lead="Сведения о пользователе и параметры проверки. В прототипе настройки сохраняются только в текущем браузере."
+        eyebrow={t.dashboard.eyebrow}
+        title={t.profile.title}
+        lead={t.profile.lead}
         crumbs={[
-          { href: "/dashboard", label: "Личный кабинет" },
-          { label: "Профиль" },
+          { href: "/dashboard", label: t.nav.dashboard },
+          { label: t.profile.crumb },
         ]}
       />
 
       <div className="mx-auto grid max-w-shell gap-5 px-4 py-6 lg:grid-cols-2">
         <Panel>
-          <PanelHead title="Сведения о пользователе" />
+          <PanelHead title={t.profile.userTitle} />
           <dl className="px-4 py-3 text-sm">
-            <Row label="Фамилия, имя, отчество" value={JUDGE.fio} />
-            <Row label="Должность" value={JUDGE.position} />
-            <Row label="Суд" value={JUDGE.court} />
-            <Row label="Субъект Российской Федерации" value={JUDGE.region} />
-            <Row label="Коллегия" value={JUDGE.chamber} />
-            <Row label="Дата назначения" value={formatDate(JUDGE.appointedAt)} />
-            <Row label="Стаж работы" value={`${JUDGE.experienceYears} лет`} />
+            <Row label={t.profile.fieldFio} value={tr(JUDGE.fio)} />
+            <Row label={t.profile.fieldPosition} value={tr(JUDGE.position)} />
+            <Row label={t.profile.fieldCourt} value={tr(JUDGE.court)} />
+            <Row label={t.profile.fieldRegion} value={tr(JUDGE.region)} />
+            <Row label={t.profile.fieldChamber} value={tr(JUDGE.chamber)} />
+            <Row
+              label={t.profile.fieldAppointed}
+              value={f.date(JUDGE.appointedAt)}
+            />
+            <Row
+              label={t.profile.fieldExperienceFull}
+              value={t.profile.years(JUDGE.experienceYears)}
+            />
           </dl>
           <p className="border-t border-hair px-4 py-2.5 text-xs text-ink-3">
-            Сведения демонстрационные. Аутентификация и связь с кадровыми
-            системами в прототипе не реализованы.
+            {t.profile.userNote}
           </p>
         </Panel>
 
         <div className="space-y-5">
           <Panel>
-            <PanelHead title="Параметры проверки" />
+            <PanelHead title={t.profile.settingsTitle} />
             <div className="divide-y divide-hair">
               <Toggle
-                label="Показывать статистическую справку"
-                hint="Сопоставление с практикой по схожим делам в заключении"
+                label={t.profile.optStatistics}
+                hint={t.profile.optStatisticsHint}
                 checked={settings.showStatistics}
                 onChange={(value) =>
                   setSettings((s) => ({ ...s, showStatistics: value }))
                 }
               />
               <Toggle
-                label="Проверять соответствие практике ВС РФ"
-                hint="Разъяснения Пленума, позиции Президиума, обзоры"
+                label={t.profile.optPractice}
+                hint={t.profile.optPracticeHint}
                 checked={settings.showPractice}
                 onChange={(value) =>
                   setSettings((s) => ({ ...s, showPractice: value }))
                 }
               />
               <Toggle
-                label="Строгая проверка дополнительного наказания"
-                hint="Считать замечанием отсутствие мотивов неназначения, когда наказание предусмотрено как возможное"
+                label={t.profile.optAdditional}
+                hint={t.profile.optAdditionalHint}
                 checked={settings.strictAdditional}
                 onChange={(value) =>
                   setSettings((s) => ({ ...s, strictAdditional: value }))
                 }
               />
               <Toggle
-                label="Формировать заключение автоматически"
-                hint="Открывать вкладку «Заключение» сразу после проверки"
+                label={t.profile.optAutoConclusion}
+                hint={t.profile.optAutoConclusionHint}
                 checked={settings.autoConclusion}
                 onChange={(value) =>
                   setSettings((s) => ({ ...s, autoConclusion: value }))
@@ -87,23 +93,20 @@ export default function ProfilePage() {
               />
             </div>
             <p className="border-t border-hair px-4 py-2.5 text-xs text-ink-3">
-              Переключатели показывают состав настраиваемых параметров. В
-              прототипе они не влияют на работу проверок.
+              {t.profile.settingsNote}
             </p>
           </Panel>
 
           <Panel>
-            <PanelHead title="Данные сеанса" />
+            <PanelHead title={t.profile.sessionTitle} />
             <div className="space-y-3 px-4 py-3 text-sm">
               <p className="text-ink-2">
-                В браузере сохранено загруженных дел: {uploaded.length}.
-                Очистка удалит их из реестра; демонстрационные материалы
-                останутся.
+                {t.profile.sessionStored(uploaded.length)}
               </p>
               {confirming ? (
                 <div className="border-l-2 border-bordo bg-bordo-pale px-3 py-2">
                   <p className="text-sm text-bordo">
-                    Удалить загруженные дела и архив заключений?
+                    {t.profile.confirmQuestion}
                   </p>
                   <div className="mt-2 flex gap-2">
                     <button
@@ -114,14 +117,14 @@ export default function ProfilePage() {
                       }}
                       className="btn btn-primary"
                     >
-                      Да, очистить
+                      {t.profile.confirmYes}
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirming(false)}
                       className="btn btn-ghost"
                     >
-                      Отмена
+                      {t.profile.confirmCancel}
                     </button>
                   </div>
                 </div>
@@ -131,7 +134,7 @@ export default function ProfilePage() {
                   onClick={() => setConfirming(true)}
                   className="btn btn-ghost"
                 >
-                  Очистить данные сеанса
+                  {t.profile.clearSession}
                 </button>
               )}
             </div>

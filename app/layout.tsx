@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { PT_Serif, PT_Sans, PT_Mono, Forum, Exo_2 } from "next/font/google";
+import { PT_Serif, PT_Sans, PT_Mono } from "next/font/google";
 import "./globals.css";
-import { THEME_STORAGE_KEY } from "@/lib/theme/constants";
+import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY } from "@/lib/i18n/constants";
 
 /* Судебное оформление: гарнитуры ParaType (Россия), лицензия OFL. */
 const ptSerif = PT_Serif({
@@ -25,28 +25,6 @@ const ptMono = PT_Mono({
   display: "swap",
 });
 
-/*
- * Игровое оформление. Гарнитуры игры проприетарные и не используются: взяты
- * открытые аналоги с той же пластикой, обе по лицензии OFL и обе с полной
- * кириллицей — это обязательное условие, иначе русские заголовки откатились
- * бы на запасную гарнитуру.
- *   Forum — романские капители для заголовков;
- *   Exo 2 — узкий технический шрифт для интерфейса.
- */
-const forum = Forum({
-  variable: "--font-forum",
-  subsets: ["cyrillic", "latin"],
-  weight: ["400"],
-  display: "swap",
-});
-
-const exo2 = Exo_2({
-  variable: "--font-exo2",
-  subsets: ["cyrillic", "latin"],
-  weight: ["400", "600", "700"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   title: "Второе мнение — проверка назначенного наказания",
   description:
@@ -54,23 +32,24 @@ export const metadata: Metadata = {
 };
 
 /*
- * Тема выставляется до первой отрисовки: иначе выбранное тёмное оформление
- * моргнёт светлым. Скрипт выполняется синхронно, до разбора остальной
- * разметки, поэтому вспышки не будет.
+ * Язык выставляется на <html> до первой отрисовки: атрибут lang нужен
+ * средствам доступности и переносу слов сразу, а не после гидратации.
+ * Текст интерфейса переключается уже в React — статическая сборка отдаёт
+ * одну и ту же русскую разметку всем.
  */
-const THEME_BOOTSTRAP = `try{var t=localStorage.getItem(${JSON.stringify(
-  THEME_STORAGE_KEY,
-)});if(t==="arena"||t==="classic"){document.documentElement.dataset.theme=t}}catch(e){}`;
+const LOCALE_BOOTSTRAP = `try{var v=localStorage.getItem(${JSON.stringify(
+  LOCALE_STORAGE_KEY,
+)});if(v==="en"||v==="ru"){document.documentElement.lang=v}}catch(e){}`;
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
       <body
-        className={`${ptSerif.variable} ${ptSans.variable} ${ptMono.variable} ${forum.variable} ${exo2.variable}`}
+        className={`${ptSerif.variable} ${ptSans.variable} ${ptMono.variable}`}
       >
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        <script dangerouslySetInnerHTML={{ __html: LOCALE_BOOTSTRAP }} />
         {children}
       </body>
     </html>

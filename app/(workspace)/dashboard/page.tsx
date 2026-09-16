@@ -6,14 +6,8 @@ import { JUDGE } from "@/lib/data/judge";
 import { STATUS_NAMES } from "@/lib/api/analysis";
 import { useAllCases, useSession } from "@/lib/store/session";
 import { caseHref } from "@/lib/routes";
-import {
-  formatDate,
-  formatDateTime,
-  formatFileSize,
-  plural,
-} from "@/lib/format";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { useChromeLabels } from "@/lib/theme/labels";
+import { useI18n } from "@/lib/i18n";
 import { Metric, Panel, PanelHead } from "@/components/ui/primitives";
 import type { CaseStatus } from "@/lib/types";
 
@@ -26,7 +20,7 @@ const STATUS_TONE: Record<CaseStatus, string> = {
 };
 
 export default function DashboardPage() {
-  const labels = useChromeLabels();
+  const { t, tr, f } = useI18n();
   const cases = useAllCases();
   const reportedIds = useSession((s) => s.reportedIds);
   const hydrated = useSession((s) => s.hydrated);
@@ -38,12 +32,14 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Личный кабинет"
-        title={JUDGE.fio}
-        lead={`${JUDGE.position}, ${JUDGE.court}. ${JUDGE.chamber}.`}
+        eyebrow={t.dashboard.eyebrow}
+        title={tr(JUDGE.fio)}
+        lead={`${tr(JUDGE.position)}, ${tr(JUDGE.court)}. ${tr(
+          JUDGE.chamber,
+        )}.`}
         actions={
           <Link href="/analysis/new" className="btn btn-primary">
-            {labels.startCheck}
+            {t.dashboard.startCheck}
           </Link>
         }
       />
@@ -51,47 +47,44 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-shell space-y-5 px-4 py-6">
         <Panel>
           <PanelHead
-            title="Показатели проверок"
-            aside={`всего дел в реестре: ${cases.length}`}
+            title={t.dashboard.metricsTitle}
+            aside={t.dashboard.totalInRegistry(cases.length)}
           />
           <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric value={cases.length} label="проектов проверено" />
+            <Metric value={cases.length} label={t.dashboard.metricChecked} />
             <Metric
               value={violations}
-              label={plural(violations, "дело с нарушением", "дела с нарушениями", "дел с нарушениями")}
+              label={t.dashboard.metricViolations(violations)}
               tone="bordo"
             />
             <Metric
               value={warnings}
-              label={plural(warnings, "дело с замечанием", "дела с замечаниями", "дел с замечаниями")}
+              label={t.dashboard.metricWarnings(warnings)}
               tone="warn"
             />
-            <Metric value={clean} label="без замечаний" tone="ok" />
+            <Metric value={clean} label={t.dashboard.metricClean} tone="ok" />
           </div>
           <p className="border-t border-hair px-4 py-2.5 text-xs text-ink-3">
-            Показатели считаются по реестру текущего сеанса. Проверка носит
-            справочный характер и не влияет на движение дела.
+            {t.dashboard.metricsNote}
           </p>
         </Panel>
 
         <Panel>
           <PanelHead
-            title="Реестр проектов судебных актов"
-            aside={
-              hydrated ? undefined : "восстановление сохранённого списка…"
-            }
+            title={t.dashboard.registryTitle}
+            aside={hydrated ? undefined : t.dashboard.restoring}
           />
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="th">Дело</th>
-                  <th className="th">Подсудимый</th>
-                  <th className="th">Квалификация</th>
-                  <th className="th">Документ</th>
-                  <th className="th">Загружен</th>
-                  <th className="th">Результат проверки</th>
-                  <th className="th">Заключение</th>
+                  <th className="th">{t.dashboard.colCase}</th>
+                  <th className="th">{t.dashboard.colDefendant}</th>
+                  <th className="th">{t.dashboard.colQualification}</th>
+                  <th className="th">{t.dashboard.colDocument}</th>
+                  <th className="th">{t.dashboard.colUploaded}</th>
+                  <th className="th">{t.dashboard.colResult}</th>
+                  <th className="th">{t.dashboard.colOpinion}</th>
                 </tr>
               </thead>
               <tbody>
@@ -102,28 +95,32 @@ export default function DashboardPage() {
                         href={caseHref(item.id)}
                         className="font-bold font-mono"
                       >
-                        {item.number}
+                        {tr(item.number)}
                       </Link>
                       {!item.demo ? (
                         <span className="ml-2 border border-rule px-1 py-0.5 text-2xs uppercase tracking-eyebrow text-ink-3">
-                          загружено
+                          {t.dashboard.uploadedTag}
                         </span>
                       ) : null}
                     </td>
-                    <td className="cell">{item.defendantShort}</td>
+                    <td className="cell">{tr(item.defendantShort)}</td>
                     <td className="cell whitespace-nowrap font-mono text-xs">
-                      {item.articleShort}
+                      {tr(item.articleShort)}
                     </td>
                     <td className="cell">
-                      <span className="block max-w-[18rem] truncate" title={item.fileName}>
+                      <span
+                        className="block max-w-[18rem] truncate"
+                        title={item.fileName}
+                      >
                         {item.fileName}
                       </span>
                       <span className="text-xs text-ink-3">
-                        {formatFileSize(item.fileSize)} · {item.pages} с.
+                        {f.fileSize(item.fileSize)} ·{" "}
+                        {t.dashboard.pages(item.pages)}
                       </span>
                     </td>
                     <td className="cell whitespace-nowrap text-ink-2">
-                      {formatDateTime(item.uploadedAt)}
+                      {f.dateTime(item.uploadedAt)}
                     </td>
                     <td
                       className={clsx(
@@ -131,13 +128,17 @@ export default function DashboardPage() {
                         STATUS_TONE[item.status],
                       )}
                     >
-                      {STATUS_NAMES[item.status]}
+                      {tr(STATUS_NAMES[item.status])}
                     </td>
                     <td className="cell whitespace-nowrap">
                       {reportedIds.includes(item.id) ? (
-                        <Link href={caseHref(item.id)}>сформировано</Link>
+                        <Link href={caseHref(item.id)}>
+                          {t.dashboard.opinionReady}
+                        </Link>
                       ) : (
-                        <span className="text-ink-3">не формировалось</span>
+                        <span className="text-ink-3">
+                          {t.dashboard.opinionNone}
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -149,49 +150,40 @@ export default function DashboardPage() {
 
         <div className="grid gap-5 lg:grid-cols-2">
           <Panel>
-            <PanelHead title="Профиль" />
+            <PanelHead title={t.dashboard.profileTitle} />
             <dl className="px-4 py-3 text-sm">
-              <Row label="Фамилия, имя, отчество" value={JUDGE.fio} />
-              <Row label="Должность" value={JUDGE.position} />
-              <Row label="Суд" value={JUDGE.court} />
-              <Row label="Субъект Российской Федерации" value={JUDGE.region} />
-              <Row label="Коллегия" value={JUDGE.chamber} />
+              <Row label={t.profile.fieldFio} value={tr(JUDGE.fio)} />
+              <Row label={t.profile.fieldPosition} value={tr(JUDGE.position)} />
+              <Row label={t.profile.fieldCourt} value={tr(JUDGE.court)} />
+              <Row label={t.profile.fieldRegion} value={tr(JUDGE.region)} />
+              <Row label={t.profile.fieldChamber} value={tr(JUDGE.chamber)} />
               <Row
-                label="Дата назначения"
-                value={formatDate(JUDGE.appointedAt)}
+                label={t.profile.fieldAppointed}
+                value={f.date(JUDGE.appointedAt)}
               />
-              <Row label="Стаж" value={`${JUDGE.experienceYears} лет`} />
+              <Row
+                label={t.profile.fieldExperience}
+                value={t.profile.years(JUDGE.experienceYears)}
+              />
             </dl>
             <div className="border-t border-hair px-4 py-2.5">
               <Link href="/profile" className="text-sm">
-                Настройки профиля
+                {t.dashboard.profileSettings}
               </Link>
             </div>
           </Panel>
 
           <Panel>
-            <PanelHead title="Порядок работы" />
+            <PanelHead title={t.dashboard.howItWorksTitle} />
             <ol className="space-y-3 px-4 py-4 text-sm">
-              <Step
-                number={1}
-                title="Загрузите проект судебного акта"
-                text="Поддерживаются форматы .docx и .pdf. Можно выбрать один из демонстрационных материалов."
-              />
-              <Step
-                number={2}
-                title="Проверьте извлечённые параметры"
-                text="Квалификация, сведения о личности, обстоятельства и назначенное наказание. Любое поле можно исправить вручную."
-              />
-              <Step
-                number={3}
-                title="Изучите результат проверки"
-                text="Пределы санкции, правила Общей части, основания раздела IV УК РФ и практика Верховного Суда РФ."
-              />
-              <Step
-                number={4}
-                title="Сформируйте заключение"
-                text="Готовый документ с аннотацией, выводами и статистической справкой. Печать средствами браузера."
-              />
+              {t.dashboard.steps.map((step, index) => (
+                <Step
+                  key={step.title}
+                  number={index + 1}
+                  title={step.title}
+                  text={step.text}
+                />
+              ))}
             </ol>
           </Panel>
         </div>

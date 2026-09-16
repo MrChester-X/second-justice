@@ -4,7 +4,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import type { Check, CheckGroup, Verdict } from "@/lib/types";
 import { PRACTICE_BY_ID, PRACTICE_KIND_NAMES } from "@/lib/data/practice";
-import { VERDICT_NAMES, verdictCountLabel } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 import {
   Panel,
   PanelHead,
@@ -12,16 +12,6 @@ import {
   VERDICT_BORDER,
   VERDICT_DOT,
 } from "@/components/ui/primitives";
-
-const GROUP_NAMES: Record<CheckGroup, string> = {
-  sanction: "Пределы санкции статьи",
-  special_rules: "Специальные правила назначения наказания",
-  additional: "Дополнительное наказание",
-  general: "Общие начала назначения наказания",
-  edition: "Редакция закона на момент деяния",
-  release: "Освобождение от ответственности и наказания (раздел IV УК РФ)",
-  practice: "Соответствие практике Верховного Суда РФ",
-};
 
 const GROUP_ORDER: CheckGroup[] = [
   "sanction",
@@ -33,14 +23,16 @@ const GROUP_ORDER: CheckGroup[] = [
   "practice",
 ];
 
-const FILTERS: Array<{ id: "all" | Verdict; label: string }> = [
-  { id: "all", label: "Все проверки" },
-  { id: "violation", label: "Нарушения" },
-  { id: "warning", label: "Замечания" },
-  { id: "ok", label: "Соответствует" },
-];
+const FILTER_IDS = ["all", "violation", "warning", "ok"] as const;
 
-function CheckCard({ check, recomputed }: { check: Check; recomputed: boolean }) {
+function CheckCard({
+  check,
+  recomputed,
+}: {
+  check: Check;
+  recomputed: boolean;
+}) {
+  const { t, tr, trAll } = useI18n();
   const [open, setOpen] = useState(
     check.verdict === "violation" || check.verdict === "warning",
   );
@@ -61,20 +53,24 @@ function CheckCard({ check, recomputed }: { check: Check; recomputed: boolean })
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <StatusMark verdict={check.verdict} />
-            <span className="font-mono text-xs text-ink-3">{check.norm}</span>
+            <span className="font-mono text-xs text-ink-3">
+              {tr(check.norm)}
+            </span>
             {recomputed ? (
               <span className="border border-navy-soft bg-navy-pale px-1.5 py-0.5 text-2xs uppercase tracking-eyebrow text-navy">
-                пересчитано
+                {t.checks.recomputed}
               </span>
             ) : null}
           </span>
           <span className="mt-1.5 block font-serif text-base font-bold text-navy">
-            {check.title}
+            {tr(check.title)}
           </span>
-          <span className="mt-0.5 block text-sm text-ink-2">{check.summary}</span>
+          <span className="mt-0.5 block text-sm text-ink-2">
+            {tr(check.summary)}
+          </span>
         </span>
         <span className="shrink-0 pt-1 text-xs text-navy underline">
-          {open ? "свернуть" : "подробно"}
+          {open ? t.checks.collapse : t.checks.expand}
         </span>
       </button>
 
@@ -82,9 +78,9 @@ function CheckCard({ check, recomputed }: { check: Check; recomputed: boolean })
         <div className="border-t border-hair px-4 py-3">
           {check.calculation && check.calculation.length > 0 ? (
             <div className="mb-3">
-              <p className="eyebrow mb-1.5">Расчёт</p>
+              <p className="eyebrow mb-1.5">{t.checks.calculation}</p>
               <ol className="space-y-1 border-l border-rule pl-3">
-                {check.calculation.map((line, index) => (
+                {trAll(check.calculation).map((line, index) => (
                   <li
                     key={line}
                     className="grid grid-cols-[1.5rem_1fr] text-sm text-ink-2"
@@ -99,11 +95,13 @@ function CheckCard({ check, recomputed }: { check: Check; recomputed: boolean })
             </div>
           ) : null}
 
-          <p className="max-w-prose text-sm leading-relaxed">{check.detail}</p>
+          <p className="max-w-prose text-sm leading-relaxed">
+            {tr(check.detail)}
+          </p>
 
           {check.practiceRefs && check.practiceRefs.length > 0 ? (
             <div className="mt-3 border-t border-hair pt-3">
-              <p className="eyebrow mb-1.5">Основания в практике</p>
+              <p className="eyebrow mb-1.5">{t.checks.practiceBasis}</p>
               <ul className="space-y-2">
                 {check.practiceRefs.map((refId) => {
                   const item = PRACTICE_BY_ID[refId];
@@ -111,10 +109,10 @@ function CheckCard({ check, recomputed }: { check: Check; recomputed: boolean })
                   return (
                     <li key={refId} className="text-sm">
                       <span className="text-2xs uppercase tracking-eyebrow text-ink-3">
-                        {PRACTICE_KIND_NAMES[item.kind]}
+                        {tr(PRACTICE_KIND_NAMES[item.kind])}
                       </span>
-                      <p className="text-ink">{item.title}</p>
-                      <p className="text-xs text-ink-3">{item.clause}</p>
+                      <p className="text-ink">{tr(item.title)}</p>
+                      <p className="text-xs text-ink-3">{tr(item.clause)}</p>
                     </li>
                   );
                 })}
@@ -134,6 +132,7 @@ export function ChecksTab({
   checks: Check[];
   recomputedIds: string[];
 }) {
+  const { t, f } = useI18n();
   const [filter, setFilter] = useState<"all" | Verdict>("all");
 
   const counts = {
@@ -151,8 +150,8 @@ export function ChecksTab({
     <div className="space-y-5">
       <Panel>
         <PanelHead
-          title="Результат проверки"
-          aside={`всего проверок: ${checks.length}`}
+          title={t.checks.resultTitle}
+          aside={t.checks.totalChecks(checks.length)}
         />
         <div className="flex flex-wrap gap-x-8 gap-y-3 px-4 py-3">
           {(["violation", "warning", "ok", "info"] as Verdict[]).map(
@@ -162,11 +161,8 @@ export function ChecksTab({
                   {counts[verdict]}
                 </div>
                 <div className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-2">
-                  <span
-                    className={VERDICT_DOT[verdict]}
-                    aria-hidden
-                  />
-                  {verdictCountLabel(verdict, counts[verdict])}
+                  <span className={VERDICT_DOT[verdict]} aria-hidden />
+                  {f.verdictCount(verdict, counts[verdict])}
                 </div>
               </div>
             ),
@@ -175,15 +171,14 @@ export function ChecksTab({
       </Panel>
 
       <div className="flex flex-wrap items-center gap-2">
-        {FILTERS.map((item) => {
-          const active = filter === item.id;
-          const count =
-            item.id === "all" ? checks.length : counts[item.id as Verdict];
+        {FILTER_IDS.map((id) => {
+          const active = filter === id;
+          const count = id === "all" ? checks.length : counts[id as Verdict];
           return (
             <button
-              key={item.id}
+              key={id}
               type="button"
-              onClick={() => setFilter(item.id)}
+              onClick={() => setFilter(id)}
               aria-pressed={active}
               className={clsx(
                 "border px-3 py-1.5 text-sm",
@@ -192,7 +187,7 @@ export function ChecksTab({
                   : "border-rule bg-paper text-ink-2 hover:border-navy hover:text-navy",
               )}
             >
-              {item.label}
+              {t.checks.filters[id]}
               <span className="ml-1.5 tnum opacity-70">{count}</span>
             </button>
           );
@@ -205,7 +200,7 @@ export function ChecksTab({
         return (
           <section key={group}>
             <h3 className="mb-2 border-b border-rule pb-1.5 font-serif text-base">
-              {GROUP_NAMES[group]}
+              {t.checks.groups[group]}
             </h3>
             <div className="space-y-2">
               {groupChecks.map((check) => (
@@ -222,7 +217,7 @@ export function ChecksTab({
 
       {visible.length === 0 ? (
         <p className="border border-dashed border-rule bg-mist px-4 py-6 text-center text-sm text-ink-3">
-          Проверок с вердиктом «{VERDICT_NAMES[filter as Verdict]}» нет.
+          {t.checks.emptyFilter(f.verdict(filter as Verdict))}
         </p>
       ) : null}
     </div>

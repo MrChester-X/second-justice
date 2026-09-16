@@ -1,5 +1,12 @@
 // Модель данных прототипа «Второе мнение».
 // Все правовые формулировки живут в lib/data/*, здесь только их форма.
+//
+// Текстовые поля имеют тип LText: значение хранится сразу на русском и
+// английском (см. lib/i18n/text.ts). Обычный string остаётся только там,
+// где текст не переводится — это дословная цитата из проверяемого акта и
+// текст санкции статьи УК РФ.
+
+import type { LText } from "./i18n/text";
 
 /** Достоверность автоматического извлечения параметра из текста акта. */
 export type Confidence = "high" | "medium" | "low" | "none";
@@ -8,7 +15,10 @@ export type Confidence = "high" | "medium" | "low" | "none";
 export interface Extracted<T> {
   value: T | null;
   confidence: Confidence;
-  /** Фрагмент исходного текста, на котором основано извлечение. */
+  /**
+   * Фрагмент исходного текста, на котором основано извлечение.
+   * Приводится на языке документа и не переводится.
+   */
   quote?: string;
 }
 
@@ -34,7 +44,7 @@ export interface Qualification {
   article: string;
   /** Номер части; пустая строка, если статья без частей. */
   part: string;
-  title: string;
+  title: LText;
   category: Category;
   /** Дата совершения деяния — нужна для ст. 9 и 10 УК РФ. */
   commitDate: string;
@@ -43,26 +53,26 @@ export interface Qualification {
 export type PriorConvictions = "none" | "expunged" | "present";
 
 export interface Defendant {
-  fio: string;
+  fio: LText;
   birthDate: string;
   age: number;
-  citizenship: string;
-  registration: string;
-  maritalStatus: string;
+  citizenship: LText;
+  registration: LText;
+  maritalStatus: LText;
   dependents: number;
-  employment: string;
-  education: string;
+  employment: LText;
+  education: LText;
   priorConvictions: PriorConvictions;
-  priorConvictionsNote: string;
-  health: string;
+  priorConvictionsNote: LText;
+  health: LText;
   /** Рецидив по ст. 18 УК РФ. */
   recidivism: boolean;
 }
 
 export interface Circumstance {
   /** Норма-основание, например «п. «и» ч. 1 ст. 61 УК РФ». */
-  norm: string;
-  text: string;
+  norm: LText;
+  text: LText;
   /** Признано судом в проекте акта. */
   recognized: boolean;
 }
@@ -93,7 +103,7 @@ export interface Term {
   amount: number;
   /** Условное осуждение по ст. 73 УК РФ: испытательный срок в месяцах. */
   suspendedMonths?: number;
-  note?: string;
+  note?: LText;
 }
 
 export interface Punishment {
@@ -126,12 +136,15 @@ export interface SanctionOption {
 export interface Sanction {
   key: string;
   /** «ч. 2 ст. 228 УК РФ» */
-  label: string;
-  title: string;
+  label: LText;
+  title: LText;
   category: Category;
-  /** Текст санкции в редакции, применимой к деянию. */
+  /**
+   * Текст санкции в редакции, применимой к деянию. Приводится по
+   * официальному тексту УК РФ и не переводится.
+   */
   text: string;
-  edition: string;
+  edition: LText;
   main: SanctionOption[];
   additional: SanctionOption[];
 }
@@ -150,15 +163,15 @@ export type CheckGroup =
 export interface Check {
   id: string;
   group: CheckGroup;
-  title: string;
+  title: LText;
   /** Норма-основание проверки. */
-  norm: string;
+  norm: LText;
   verdict: Verdict;
   /** Вывод одной фразой. */
-  summary: string;
+  summary: LText;
   /** Пошаговый расчёт, каждая строка — один шаг. */
-  calculation?: string[];
-  detail: string;
+  calculation?: LText[];
+  detail: LText;
   /** Идентификаторы позиций из lib/data/practice.ts. */
   practiceRefs?: string[];
 }
@@ -167,21 +180,21 @@ export interface PracticeItem {
   id: string;
   kind: "plenum" | "presidium" | "review";
   /** «Постановление Пленума ВС РФ от 22.12.2015 № 58» */
-  title: string;
+  title: LText;
   date: string;
   /** Пункт или раздел. */
-  clause: string;
-  articles: string[];
-  excerpt: string;
+  clause: LText;
+  articles: LText[];
+  excerpt: LText;
 }
 
 export interface SimilarSentence {
   id: string;
-  court: string;
-  region: string;
+  court: LText;
+  region: LText;
   date: string;
   /** «ч. 2 ст. 228 УК РФ» */
-  article: string;
+  article: LText;
   kind: PunishmentKind;
   unit: Unit;
   amount: number;
@@ -195,7 +208,7 @@ export interface SimilarSentence {
 }
 
 export interface HistogramBin {
-  label: string;
+  label: LText;
   from: number;
   to: number;
   count: number;
@@ -226,26 +239,26 @@ export interface Statistics {
 }
 
 export interface AttentionArea {
-  title: string;
-  text: string;
+  title: LText;
+  text: LText;
   severity: Verdict;
 }
 
 export interface Conclusion {
-  annotation: string;
-  formalResult: string;
-  practiceResult: string;
+  annotation: LText;
+  formalResult: LText;
+  practiceResult: LText;
   attentionAreas: AttentionArea[];
-  statisticalNote: string;
-  normsUsed: string[];
+  statisticalNote: LText;
+  normsUsed: LText[];
 }
 
 /** Предел, наложенный правилом Общей части: используется шкалой санкции. */
 export interface ScaleLimit {
   /** Значение предела в единицах шкалы. */
   value: number;
-  norm: string;
-  label: string;
+  norm: LText;
+  label: LText;
 }
 
 export interface AnalysisResult {
@@ -269,26 +282,26 @@ export type CaseStatus =
 export interface CaseFile {
   id: string;
   /** Номер дела, например «1-245/2026». */
-  number: string;
+  number: LText;
   fileName: string;
   fileSize: number;
   pages: number;
   uploadedAt: string;
   status: CaseStatus;
-  defendantShort: string;
-  articleShort: string;
+  defendantShort: LText;
+  articleShort: LText;
   /** Демонстрационный материал, а не загруженный пользователем файл. */
   demo: boolean;
   analysis: AnalysisResult;
 }
 
 export interface Judge {
-  fio: string;
-  shortFio: string;
-  position: string;
-  court: string;
-  region: string;
-  chamber: string;
+  fio: LText;
+  shortFio: LText;
+  position: LText;
+  court: LText;
+  region: LText;
+  chamber: LText;
   experienceYears: number;
   appointedAt: string;
 }
@@ -296,8 +309,8 @@ export interface Judge {
 /** Стадия имитируемой обработки документа. */
 export interface Stage {
   id: string;
-  label: string;
-  detail: string;
+  label: LText;
+  detail: LText;
   /** Длительность стадии в миллисекундах. */
   duration: number;
 }

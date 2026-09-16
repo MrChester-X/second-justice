@@ -5,6 +5,7 @@ import type {
   Statistics,
   Unit,
 } from "./types";
+import { l, type LText } from "./i18n/text";
 
 /** Квантиль по методу линейной интерполяции на отсортированном массиве. */
 function quantile(sorted: number[], p: number): number {
@@ -32,9 +33,15 @@ function binWidth(unit: Unit, span: number): number {
     unit === "months"
       ? [1, 2, 3, 6, 12, 24, 36]
       : unit === "hours"
-        ? [10, 20, 40, 60, 120]
-        : [5000, 10000, 25000, 50000, 100000];
+      ? [10, 20, 40, 60, 120]
+      : [5000, 10000, 25000, 50000, 100000];
   return steps.find((step) => step >= raw) ?? steps[steps.length - 1];
+}
+
+/** Числовая подпись корзины: одинакова на обоих языках. */
+function numericLabel(value: number): LText {
+  const text = String(value);
+  return l(text, text);
 }
 
 function buildHistogram(
@@ -54,8 +61,9 @@ function buildHistogram(
     const to = from + width;
     const isLast = i === binCount - 1;
     bins.push({
-      // Подписи корзин числовые; единица измерения названа в подписи под графиком.
-      label: unit === "rub" ? String(from / 1000) : String(from),
+      // Подписи корзин числовые, поэтому одинаковы на обоих языках; единица
+      // измерения названа в подписи под графиком.
+      label: numericLabel(unit === "rub" ? from / 1000 : from),
       from,
       to,
       count: amounts.filter((a) => a >= from && (isLast ? a <= to : a < to))
@@ -147,9 +155,11 @@ export function scoreSimilarity(
   target: SimilarityInput,
 ): number {
   let score = 0;
-  if (sentence.article === target.article) score += 0.4;
+  if (sentence.article.ru === target.article) score += 0.4;
   if (sentence.kind === target.kind) score += 0.2;
-  score += 0.15 * (1 - Math.min(3, Math.abs(sentence.mitigating - target.mitigating)) / 3);
+  score +=
+    0.15 *
+    (1 - Math.min(3, Math.abs(sentence.mitigating - target.mitigating)) / 3);
   score += sentence.aggravating === target.aggravating ? 0.1 : 0;
   score += sentence.priorConvictions === target.priorConvictions ? 0.1 : 0;
   score += sentence.specialOrder === target.specialOrder ? 0.05 : 0;
@@ -159,22 +169,44 @@ export function scoreSimilarity(
 /** Словесная оценка отклонения от медианы практики. */
 export function describeDeviation(sigma: number): {
   level: "typical" | "notable" | "strong";
-  text: string;
+  text: LText;
 } {
   const abs = Math.abs(sigma);
-  const direction = sigma < 0 ? "мягче" : "строже";
-  if (abs < 0.75)
+  const milder = sigma < 0;
+
+  if (abs < 0.75) {
     return {
       level: "typical",
-      text: "Назначенное наказание находится в пределах обычного разброса по схожим делам.",
+      text: l(
+        "Назначенное наказание находится в пределах обычного разброса по схожим делам.",
+        "The punishment imposed lies within the usual spread for comparable cases.",
+      ),
     };
-  if (abs < 1.5)
+  }
+
+  if (abs < 1.5) {
     return {
       level: "notable",
-      text: `Назначенное наказание заметно ${direction} медианы по схожим делам.`,
+      text: l(
+        `Назначенное наказание заметно ${
+          milder ? "мягче" : "строже"
+        } медианы по схожим делам.`,
+        `The punishment imposed is noticeably ${
+          milder ? "milder" : "more severe"
+        } than the median for comparable cases.`,
+      ),
     };
+  }
+
   return {
     level: "strong",
-    text: `Назначенное наказание существенно ${direction} медианы по схожим делам; отклонение выходит за один стандартный разброс.`,
+    text: l(
+      `Назначенное наказание существенно ${
+        milder ? "мягче" : "строже"
+      } медианы по схожим делам; отклонение выходит за один стандартный разброс.`,
+      `The punishment imposed is substantially ${
+        milder ? "milder" : "more severe"
+      } than the median for comparable cases; the deviation exceeds one standard deviation.`,
+    ),
   };
 }

@@ -1,0 +1,1 @@
+- spinbutton "Размер, месяцев" [active] [ref=f5e196]: "30"

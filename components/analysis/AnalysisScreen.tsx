@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCaseById, useSession } from "@/lib/store/session";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Workspace } from "@/components/analysis/Workspace";
-import { useChromeLabels } from "@/lib/theme/labels";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Рабочая область анализа. Дело берётся из реестра сеанса, поэтому экран
@@ -12,7 +12,7 @@ import { useChromeLabels } from "@/lib/theme/labels";
  * дела, загруженного пользователем в браузере.
  */
 export function AnalysisScreen({ id }: { id: string }) {
-  const labels = useChromeLabels();
+  const { t, tr } = useI18n();
   const caseFile = useCaseById(id);
   const hydrated = useSession((s) => s.hydrated);
 
@@ -20,22 +20,20 @@ export function AnalysisScreen({ id }: { id: string }) {
     return (
       <>
         <PageHeader
-          eyebrow="Рабочая область анализа"
-          title={hydrated ? "Дело не найдено" : "Загрузка дела"}
-          lead={
-            hydrated
-              ? "Дело отсутствует в реестре текущего сеанса. Возможно, оно было загружено в другом сеансе или список был очищен."
-              : "Восстановление сохранённого списка дел."
+          eyebrow={t.workspace.eyebrow}
+          title={
+            hydrated ? t.workspace.notFoundTitle : t.workspace.loadingTitle
           }
+          lead={hydrated ? t.workspace.notFoundLead : t.workspace.loadingLead}
           crumbs={[
-            { href: "/dashboard", label: "Личный кабинет" },
-            { label: "Анализ" },
+            { href: "/dashboard", label: t.nav.dashboard },
+            { label: t.workspace.crumbAnalysis },
           ]}
         />
         {hydrated ? (
           <div className="mx-auto max-w-shell px-4 py-8">
             <Link href="/analysis/new" className="btn btn-primary">
-              Загрузить проект судебного акта
+              {t.workspace.uploadDraft}
             </Link>
           </div>
         ) : null}
@@ -46,17 +44,17 @@ export function AnalysisScreen({ id }: { id: string }) {
   return (
     <>
       <PageHeader
-        eyebrow="Рабочая область анализа"
-        title={`Дело № ${caseFile.number}`}
-        lead={`${caseFile.articleShort} · ${caseFile.defendantShort}`}
+        eyebrow={t.workspace.eyebrow}
+        title={t.workspace.caseTitle(tr(caseFile.number))}
+        lead={`${tr(caseFile.articleShort)} · ${tr(caseFile.defendantShort)}`}
         crumbs={[
-          { href: "/dashboard", label: "Личный кабинет" },
-          { href: "/analysis/new", label: "Проверки" },
-          { label: `Дело № ${caseFile.number}` },
+          { href: "/dashboard", label: t.nav.dashboard },
+          { href: "/analysis/new", label: t.workspace.crumbChecks },
+          { label: t.workspace.caseTitle(tr(caseFile.number)) },
         ]}
         actions={
           <Link href="/analysis/new" className="btn btn-ghost">
-            {labels.newCheck}
+            {t.nav.newCheck}
           </Link>
         }
       />

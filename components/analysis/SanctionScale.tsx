@@ -1,5 +1,7 @@
+"use client";
+
 import type { SanctionOption, ScaleLimit, Statistics, Unit } from "@/lib/types";
-import { formatAmount, formatAmountShort, kindName } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Шкала санкции — основной измерительный инструмент интерфейса.
@@ -28,8 +30,8 @@ function tickStep(unit: Unit, span: number): number {
     unit === "months"
       ? [1, 2, 3, 6, 12, 24, 36, 60]
       : unit === "hours"
-        ? [20, 30, 60, 120]
-        : [5000, 10000, 25000, 50000, 100000, 250000];
+      ? [20, 30, 60, 120]
+      : [5000, 10000, 25000, 50000, 100000, 250000];
   const target = span / 6;
   return steps.find((s) => s >= target) ?? steps[steps.length - 1];
 }
@@ -57,13 +59,14 @@ export function SanctionScale({
     lawMax,
   );
 
+  const { t, tr, f } = useI18n();
   const domainMax = Math.max(lawMax, assigned) * 1.06;
   const x = (value: number) => PAD_X + (value / domainMax) * PLOT;
 
   const withinSanction = assigned >= lawMin && assigned <= lawMax;
   const withinLimits = assigned <= tightest;
   const ok = withinSanction && withinLimits;
-  // Классы, а не хексы: цвет отметки должен следовать выбранной теме.
+  // Классы, а не хексы: цвет берётся из палитры темы.
   const markStroke = ok ? "stroke-navy" : "stroke-bordo";
   const markFill = ok ? "fill-navy" : "fill-bordo";
   const markSwatch = ok ? "bg-navy" : "bg-bordo";
@@ -75,9 +78,9 @@ export function SanctionScale({
   return (
     <figure className="m-0">
       <figcaption className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <span className="eyebrow">Шкала санкции</span>
+        <span className="eyebrow">{t.scale.caption}</span>
         <span className="text-xs text-ink-2">
-          {sanctionLabel} · {kindName(option.kind)}
+          {sanctionLabel} · {f.kind(option.kind)}
         </span>
       </figcaption>
 
@@ -86,7 +89,11 @@ export function SanctionScale({
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           className="block h-auto w-full min-w-[680px]"
           role="img"
-          aria-label={`Назначено ${formatAmount(assigned, unit)} при пределах санкции ${formatAmount(lawMin, unit)} — ${formatAmount(lawMax, unit)}`}
+          aria-label={t.scale.ariaLabel(
+            f.amount(assigned, unit),
+            f.amount(lawMin, unit),
+            f.amount(lawMax, unit),
+          )}
         >
           <defs>
             <pattern
@@ -97,7 +104,14 @@ export function SanctionScale({
               patternTransform="rotate(45)"
             >
               <rect width="7" height="7" className="fill-mist" />
-              <line x1="0" y1="0" x2="0" y2="7" className="stroke-rule" strokeWidth="2.5" />
+              <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="7"
+                className="stroke-rule"
+                strokeWidth="2.5"
+              />
             </pattern>
             <pattern
               id="hatch-limit"
@@ -107,7 +121,14 @@ export function SanctionScale({
               patternTransform="rotate(45)"
             >
               <rect width="7" height="7" className="fill-bordo-pale" />
-              <line x1="0" y1="0" x2="0" y2="7" className="stroke-bordo/40" strokeWidth="2.5" />
+              <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="7"
+                className="stroke-bordo/40"
+                strokeWidth="2.5"
+              />
             </pattern>
           </defs>
 
@@ -175,14 +196,14 @@ export function SanctionScale({
                 fontSize="11"
                 fontWeight="700"
               >
-                {formatAmountShort(bound, unit)}
+                {f.amountShort(bound, unit)}
               </text>
             </g>
           ))}
 
           {/* Пределы правил Общей части */}
           {limits.map((limit) => (
-            <g key={limit.norm}>
+            <g key={limit.norm.ru}>
               <line
                 x1={x(limit.value)}
                 y1={Y_SANCTION - 6}
@@ -199,7 +220,7 @@ export function SanctionScale({
                 className="fill-bordo font-sans"
                 fontSize="11"
               >
-                {limit.norm} — {formatAmountShort(limit.value, unit)}
+                {tr(limit.norm)} — {f.amountShort(limit.value, unit)}
               </text>
             </g>
           ))}
@@ -230,7 +251,8 @@ export function SanctionScale({
                 className="fill-ink-2 font-sans"
                 fontSize="11"
               >
-                медиана практики {formatAmountShort(statistics.median, unit)}
+                {t.scale.medianOfPractice}{" "}
+                {f.amountShort(statistics.median, unit)}
               </text>
             </g>
           ) : null}
@@ -246,7 +268,9 @@ export function SanctionScale({
               strokeWidth="2.5"
             />
             <polygon
-              points={`${x(assigned)},${Y_SANCTION - 1} ${x(assigned) - 6},${Y_SANCTION - 10} ${x(assigned) + 6},${Y_SANCTION - 10}`}
+              points={`${x(assigned)},${Y_SANCTION - 1} ${x(assigned) - 6},${
+                Y_SANCTION - 10
+              } ${x(assigned) + 6},${Y_SANCTION - 10}`}
               className={markFill}
             />
             <text
@@ -256,14 +280,14 @@ export function SanctionScale({
                 x(assigned) > WIDTH - 180
                   ? "end"
                   : x(assigned) < 180
-                    ? "start"
-                    : "middle"
+                  ? "start"
+                  : "middle"
               }
               className={`font-sans ${markFill}`}
               fontSize="12.5"
               fontWeight="700"
             >
-              назначено: {formatAmountShort(assigned, unit)}
+              {t.scale.assigned}: {f.amountShort(assigned, unit)}
             </text>
           </g>
 
@@ -291,7 +315,7 @@ export function SanctionScale({
                 className="fill-ink-3 font-sans"
                 fontSize="10.5"
               >
-                {tick === 0 ? "0" : formatAmountShort(tick, unit)}
+                {tick === 0 ? "0" : f.amountShort(tick, unit)}
               </text>
             </g>
           ))}
@@ -301,23 +325,23 @@ export function SanctionScale({
       <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-ink-2">
         <li className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-5 border border-rule bg-navy-pale" />
-          пределы санкции
+          {t.scale.legendSanction}
         </li>
         {limits.length > 0 ? (
           <li className="flex items-center gap-1.5">
             <span className="inline-block h-3 w-5 border border-bordo/40 bg-bordo-pale" />
-            закрыто правилами Общей части
+            {t.scale.legendClosed}
           </li>
         ) : null}
         {statistics && statistics.total > 0 ? (
           <li className="flex items-center gap-1.5">
             <span className="inline-block h-3 w-5 border border-navy-mid bg-navy-mid/30" />
-            практика: от первого до третьего квартиля
+            {t.scale.legendPractice}
           </li>
         ) : null}
         <li className="flex items-center gap-1.5">
           <span className={`inline-block h-3 w-0.5 ${markSwatch}`} />
-          назначенное наказание
+          {t.scale.legendAssigned}
         </li>
       </ul>
     </figure>

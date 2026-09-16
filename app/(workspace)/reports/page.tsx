@@ -5,8 +5,8 @@ import clsx from "clsx";
 import { useAllCases, useSession } from "@/lib/store/session";
 import { caseHref } from "@/lib/routes";
 import { STATUS_NAMES } from "@/lib/api/analysis";
-import { formatDateTime, plural } from "@/lib/format";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { useI18n } from "@/lib/i18n";
 import { EmptyState, Panel, PanelHead } from "@/components/ui/primitives";
 import type { CaseStatus } from "@/lib/types";
 
@@ -19,6 +19,7 @@ const STATUS_TONE: Record<CaseStatus, string> = {
 };
 
 export default function ReportsPage() {
+  const { t, tr, f } = useI18n();
   const cases = useAllCases();
   const reportedIds = useSession((s) => s.reportedIds);
   const hydrated = useSession((s) => s.hydrated);
@@ -28,46 +29,38 @@ export default function ReportsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Личный кабинет"
-        title="Архив заключений"
-        lead="Заключения, сформированные по проверенным проектам судебных актов. Заключение появляется в архиве после открытия соответствующей вкладки в рабочей области анализа."
+        eyebrow={t.dashboard.eyebrow}
+        title={t.reports.title}
+        lead={t.reports.lead}
         crumbs={[
-          { href: "/dashboard", label: "Личный кабинет" },
-          { label: "Заключения" },
+          { href: "/dashboard", label: t.nav.dashboard },
+          { label: t.nav.reports },
         ]}
       />
 
       <div className="mx-auto max-w-shell space-y-5 px-4 py-6">
         {reported.length === 0 ? (
           <EmptyState
-            title={
-              hydrated
-                ? "Заключений пока нет"
-                : "Восстановление сохранённого архива"
-            }
-            hint={
-              hydrated
-                ? "Откройте дело в рабочей области анализа и перейдите на вкладку «Заключение»."
-                : undefined
-            }
+            title={hydrated ? t.reports.emptyTitle : t.reports.restoringTitle}
+            hint={hydrated ? t.reports.emptyHint : undefined}
           />
         ) : (
           <Panel>
             <PanelHead
-              title="Сформированные заключения"
-              aside={`${reported.length} ${plural(reported.length, "документ", "документа", "документов")}`}
+              title={t.reports.tableTitle}
+              aside={t.reports.documents(reported.length)}
             />
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px] border-collapse text-sm">
                 <thead>
                   <tr>
-                    <th className="th">Дело</th>
-                    <th className="th">Подсудимый</th>
-                    <th className="th">Квалификация</th>
-                    <th className="th text-right">Нарушений</th>
-                    <th className="th text-right">Замечаний</th>
-                    <th className="th">Результат</th>
-                    <th className="th">Сформировано по документу от</th>
+                    <th className="th">{t.dashboard.colCase}</th>
+                    <th className="th">{t.dashboard.colDefendant}</th>
+                    <th className="th">{t.dashboard.colQualification}</th>
+                    <th className="th text-right">{t.reports.colViolations}</th>
+                    <th className="th text-right">{t.reports.colWarnings}</th>
+                    <th className="th">{t.reports.colResult}</th>
+                    <th className="th">{t.reports.colDocumentDate}</th>
                     <th className="th" />
                   </tr>
                 </thead>
@@ -84,12 +77,12 @@ export default function ReportsPage() {
                       <tr key={item.id} className="hover:bg-mist">
                         <td className="cell whitespace-nowrap font-mono font-bold">
                           <Link href={caseHref(item.id)}>
-                            {item.number}
+                            {tr(item.number)}
                           </Link>
                         </td>
-                        <td className="cell">{item.defendantShort}</td>
+                        <td className="cell">{tr(item.defendantShort)}</td>
                         <td className="cell whitespace-nowrap font-mono text-xs">
-                          {item.articleShort}
+                          {tr(item.articleShort)}
                         </td>
                         <td className="cell text-right tnum text-bordo">
                           {violations}
@@ -103,14 +96,14 @@ export default function ReportsPage() {
                             STATUS_TONE[item.status],
                           )}
                         >
-                          {STATUS_NAMES[item.status]}
+                          {tr(STATUS_NAMES[item.status])}
                         </td>
                         <td className="cell whitespace-nowrap text-ink-2">
-                          {formatDateTime(item.uploadedAt)}
+                          {f.dateTime(item.uploadedAt)}
                         </td>
                         <td className="cell whitespace-nowrap">
                           <Link href={caseHref(item.id)}>
-                            Открыть и напечатать
+                            {t.reports.openAndPrint}
                           </Link>
                         </td>
                       </tr>
@@ -120,9 +113,7 @@ export default function ReportsPage() {
               </table>
             </div>
             <p className="border-t border-hair px-4 py-2.5 text-xs text-ink-3">
-              Экспорт выполняется печатью средствами браузера: откройте
-              заключение и выберите «Сохранить как PDF». Отдельного файлового
-              хранилища в прототипе нет.
+              {t.reports.exportNote}
             </p>
           </Panel>
         )}

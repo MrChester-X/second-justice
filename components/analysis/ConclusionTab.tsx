@@ -4,22 +4,14 @@ import type { ReactNode } from "react";
 import type { CaseFile, Check, Statistics } from "@/lib/types";
 import { JUDGE } from "@/lib/data/judge";
 import { PRACTICE_BY_ID } from "@/lib/data/practice";
-import {
-  formatAmountShort,
-  formatDateLong,
-  formatDateTime,
-  formatPercent,
-  formatSigma,
-  kindNameShort,
-  plural,
-  verdictCountLabel,
-} from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 import { StatusMark, VERDICT_DOT } from "@/components/ui/primitives";
 import { Disclaimer } from "@/components/layout/Disclaimer";
 
 /**
  * Заключение. Свёрстано как документ, а не как экран: печатается по Ctrl+P
  * без навигации и рамок благодаря правилам @media print в globals.css.
+ * Документ выводится на языке интерфейса — и печатается на нём же.
  */
 export function ConclusionTab({
   caseFile,
@@ -33,7 +25,9 @@ export function ConclusionTab({
   statistics: Statistics;
   generatedAt: string;
 }) {
+  const { t, tr, trAll, f } = useI18n();
   const { conclusion } = caseFile.analysis;
+
   // Один документ может обосновывать несколько проверок: группируем по
   // названию, перечисляя разделы, иначе длинные названия дублируются.
   const practiceDocuments = Array.from(
@@ -42,13 +36,14 @@ export function ConclusionTab({
     (acc, id) => {
       const item = PRACTICE_BY_ID[id];
       if (!item) return acc;
-      const existing = acc.find((entry) => entry.title === item.title);
+      const title = tr(item.title);
+      const clause = tr(item.clause);
+      const existing = acc.find((entry) => entry.title === title);
       if (existing) {
-        if (!existing.clauses.includes(item.clause))
-          existing.clauses.push(item.clause);
+        if (!existing.clauses.includes(clause)) existing.clauses.push(clause);
         return acc;
       }
-      acc.push({ title: item.title, date: item.date, clauses: [item.clause] });
+      acc.push({ title, date: item.date, clauses: [clause] });
       return acc;
     },
     [],
@@ -57,47 +52,45 @@ export function ConclusionTab({
   return (
     <div className="mx-auto max-w-[52rem] border border-rule bg-paper print-flat print:mx-0 print:max-w-none">
       <div className="border-b-2 border-navy px-8 py-6 print:px-0">
-        <p className="eyebrow">
-          Система проверки проекта судебного акта «Второе мнение»
-        </p>
+        <p className="eyebrow">{t.conclusion.systemLine}</p>
         <h2 className="mt-2 font-serif text-2xl leading-tight">
-          Заключение по результатам проверки назначенного наказания
+          {t.conclusion.documentTitle}
         </h2>
         <dl className="mt-4 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
           <div className="flex gap-2">
-            <dt className="text-ink-3">Дело:</dt>
-            <dd className="font-bold">{caseFile.number}</dd>
+            <dt className="text-ink-3">{t.conclusion.fieldCase}</dt>
+            <dd className="font-bold">{tr(caseFile.number)}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-ink-3">Квалификация:</dt>
-            <dd className="font-bold">{caseFile.articleShort}</dd>
+            <dt className="text-ink-3">{t.conclusion.fieldQualification}</dt>
+            <dd className="font-bold">{tr(caseFile.articleShort)}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-ink-3">Суд:</dt>
-            <dd>{JUDGE.court}</dd>
+            <dt className="text-ink-3">{t.conclusion.fieldCourt}</dt>
+            <dd>{tr(JUDGE.court)}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-ink-3">Судья:</dt>
-            <dd>{JUDGE.shortFio}</dd>
+            <dt className="text-ink-3">{t.conclusion.fieldJudge}</dt>
+            <dd>{tr(JUDGE.shortFio)}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-ink-3">Документ:</dt>
+            <dt className="text-ink-3">{t.conclusion.fieldDocument}</dt>
             <dd className="break-all">{caseFile.fileName}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-ink-3">Сформировано:</dt>
+            <dt className="text-ink-3">{t.conclusion.fieldGenerated}</dt>
             <dd>{generatedAt}</dd>
           </div>
         </dl>
       </div>
 
       <div className="space-y-7 px-8 py-6 print:px-0">
-        <Section number="1" title="Краткая аннотация дела">
-          <p>{conclusion.annotation}</p>
+        <Section number="1" title={t.conclusion.section1}>
+          <p>{tr(conclusion.annotation)}</p>
         </Section>
 
-        <Section number="2" title="Результат проверки на соответствие закону">
-          <p>{conclusion.formalResult}</p>
+        <Section number="2" title={t.conclusion.section2}>
+          <p>{tr(conclusion.formalResult)}</p>
           <div className="mt-3 flex flex-wrap gap-x-7 gap-y-2 border-y border-hair py-2.5">
             {(["violation", "warning", "ok"] as const).map((verdict) => {
               const count = checks.filter((c) => c.verdict === verdict).length;
@@ -111,7 +104,7 @@ export function ConclusionTab({
                   </span>
                   <span className="flex items-center gap-1.5 text-ink-2">
                     <span className={VERDICT_DOT[verdict]} aria-hidden />
-                    {verdictCountLabel(verdict, count)}
+                    {f.verdictCount(verdict, count)}
                   </span>
                 </span>
               );
@@ -119,24 +112,18 @@ export function ConclusionTab({
           </div>
         </Section>
 
-        <Section number="3" title="Результат проверки по судебной практике">
-          <p>{conclusion.practiceResult}</p>
+        <Section number="3" title={t.conclusion.section3}>
+          <p>{tr(conclusion.practiceResult)}</p>
         </Section>
 
-        <Section
-          number="4"
-          title="Потенциальные области для более глубокого анализа"
-        >
+        <Section number="4" title={t.conclusion.section4}>
           {conclusion.attentionAreas.length === 0 ? (
-            <p>
-              Несоответствий и отклонений, требующих дополнительного анализа, не
-              выявлено.
-            </p>
+            <p>{t.conclusion.noAttentionAreas}</p>
           ) : (
             <ol className="space-y-3">
               {conclusion.attentionAreas.map((area, index) => (
                 <li
-                  key={area.title}
+                  key={area.title.ru}
                   className="avoid-break grid grid-cols-[1.75rem_1fr] gap-x-2"
                 >
                   <span className="font-mono text-sm text-ink-3">
@@ -144,10 +131,12 @@ export function ConclusionTab({
                   </span>
                   <div>
                     <div className="flex flex-wrap items-baseline gap-x-3">
-                      <span className="font-bold text-ink">{area.title}</span>
+                      <span className="font-bold text-ink">
+                        {tr(area.title)}
+                      </span>
                       <StatusMark verdict={area.severity} />
                     </div>
-                    <p className="mt-0.5">{area.text}</p>
+                    <p className="mt-0.5">{tr(area.text)}</p>
                   </div>
                 </li>
               ))}
@@ -155,45 +144,55 @@ export function ConclusionTab({
           )}
         </Section>
 
-        <Section number="5" title="Статистическая справка по аналогичным приговорам">
-          <p>{conclusion.statisticalNote}</p>
+        <Section number="5" title={t.conclusion.section5}>
+          <p>{tr(conclusion.statisticalNote)}</p>
           <table className="mt-3 w-full border-collapse text-sm">
             <tbody>
               <StatRow
-                label="Объём выборки"
-                value={`${statistics.total} ${plural(statistics.total, "приговор", "приговора", "приговоров")} (${kindNameShort(statistics.kind)})`}
+                label={t.conclusion.statSample}
+                value={`${t.similar.sampleCount(
+                  statistics.total,
+                )} (${f.kindShort(statistics.kind)})`}
               />
               <StatRow
-                label="Минимум — максимум"
-                value={`${formatAmountShort(statistics.min, statistics.unit)} — ${formatAmountShort(statistics.max, statistics.unit)}`}
+                label={t.conclusion.statRange}
+                value={`${f.amountShort(
+                  statistics.min,
+                  statistics.unit,
+                )} — ${f.amountShort(statistics.max, statistics.unit)}`}
               />
               <StatRow
-                label="Первый и третий квартиль"
-                value={`${formatAmountShort(statistics.q1, statistics.unit)} — ${formatAmountShort(statistics.q3, statistics.unit)}`}
+                label={t.conclusion.statQuartiles}
+                value={`${f.amountShort(
+                  statistics.q1,
+                  statistics.unit,
+                )} — ${f.amountShort(statistics.q3, statistics.unit)}`}
               />
               <StatRow
-                label="Медиана"
-                value={formatAmountShort(statistics.median, statistics.unit)}
+                label={t.conclusion.statMedian}
+                value={f.amountShort(statistics.median, statistics.unit)}
               />
               <StatRow
-                label="Назначено по проверяемому делу"
-                value={formatAmountShort(statistics.assigned, statistics.unit)}
+                label={t.conclusion.statAssigned}
+                value={f.amountShort(statistics.assigned, statistics.unit)}
               />
               <StatRow
-                label="Отклонение от медианы"
-                value={`${formatSigma(statistics.deviationSigma)} · ${statistics.percentile}-й процентиль`}
+                label={t.conclusion.statDeviation}
+                value={`${f.sigma(
+                  statistics.deviationSigma,
+                )} · ${t.similar.percentile(statistics.percentile)}`}
               />
               <StatRow
-                label="Доля условного осуждения в выборке"
-                value={formatPercent(statistics.suspendedShare)}
+                label={t.conclusion.statSuspended}
+                value={f.percent(statistics.suspendedShare)}
               />
             </tbody>
           </table>
         </Section>
 
-        <Section number="6" title="Использованные нормы">
+        <Section number="6" title={t.conclusion.section6}>
           <ul className="columns-1 gap-x-8 text-sm sm:columns-2">
-            {conclusion.normsUsed.map((norm) => (
+            {trAll(conclusion.normsUsed).map((norm) => (
               <li key={norm} className="break-inside-avoid py-0.5">
                 {norm}
               </li>
@@ -201,29 +200,28 @@ export function ConclusionTab({
           </ul>
         </Section>
 
-        <Section number="7" title="Использованные разъяснения и обзоры практики">
+        <Section number="7" title={t.conclusion.section7}>
           <ul className="space-y-2 text-sm">
             {practiceDocuments.map((doc) => (
               <li key={doc.title} className="avoid-break">
                 <span className="block">{doc.title}</span>
                 <span className="text-xs text-ink-3">
-                  {doc.clauses.join("; ")} · {formatDateLong(doc.date)}
+                  {doc.clauses.join("; ")} · {f.dateLong(doc.date)}
                 </span>
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-xs text-ink-3">
-            Изложения позиций приведены в справочном виде и подлежат сверке с
-            официальными текстами.
-          </p>
+          <p className="mt-3 text-xs text-ink-3">{t.conclusion.practiceNote}</p>
         </Section>
 
         <div className="border-t border-rule pt-4">
           <Disclaimer compact />
           <p className="mt-3 text-xs text-ink-3">
-            Заключение сформировано автоматически {generatedAt} по документу
-            «{caseFile.fileName}», загруженному{" "}
-            {formatDateTime(caseFile.uploadedAt)}. Подписи не требует.
+            {t.conclusion.footer(
+              generatedAt,
+              caseFile.fileName,
+              f.dateTime(caseFile.uploadedAt),
+            )}
           </p>
         </div>
       </div>

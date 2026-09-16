@@ -3,14 +3,7 @@
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import type { SimilarSentence, Statistics } from "@/lib/types";
-import {
-  formatAmountShort,
-  formatDate,
-  formatPercent,
-  formatSigma,
-  kindNameShort,
-  plural,
-} from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 import { describeDeviation } from "@/lib/stats";
 import { Metric, Panel, PanelHead } from "@/components/ui/primitives";
 import { PunishmentHistogram } from "./PunishmentHistogram";
@@ -24,24 +17,27 @@ export function SimilarTab({
   statistics: Statistics;
   assignedAmount: number;
 }) {
+  const { t, tr, f } = useI18n();
   const [onlySameKind, setOnlySameKind] = useState(true);
   const [region, setRegion] = useState("all");
   const [minSimilarity, setMinSimilarity] = useState(0);
 
-  const regions = useMemo(
-    () =>
-      Array.from(new Set(similar.map((s) => s.region))).sort((a, b) =>
-        a.localeCompare(b, "ru"),
-      ),
-    [similar],
-  );
+  /* Русское название региона служит ключом фильтра: выбор не сбрасывается
+     при переключении языка. */
+  const regions = useMemo(() => {
+    const seen = new Map<string, (typeof similar)[number]["region"]>();
+    for (const item of similar) {
+      if (!seen.has(item.region.ru)) seen.set(item.region.ru, item.region);
+    }
+    return [...seen.values()].sort((a, b) => a.ru.localeCompare(b.ru, "ru"));
+  }, [similar]);
 
   const rows = useMemo(
     () =>
       similar.filter(
         (s) =>
           (!onlySameKind || s.kind === statistics.kind) &&
-          (region === "all" || s.region === region) &&
+          (region === "all" || s.region.ru === region) &&
           s.similarity >= minSimilarity,
       ),
     [similar, onlySameKind, region, minSimilarity, statistics.kind],
@@ -52,54 +48,59 @@ export function SimilarTab({
     deviation.level === "strong"
       ? "bordo"
       : deviation.level === "notable"
-        ? "warn"
-        : "ok";
+      ? "warn"
+      : "ok";
 
   return (
     <div className="space-y-5">
       <Panel>
         <PanelHead
-          title="Статистическая справка"
-          aside={`выборка: ${statistics.total} ${plural(statistics.total, "приговор", "приговора", "приговоров")} · ${kindNameShort(statistics.kind)}`}
+          title={t.similar.statsTitle}
+          aside={`${t.similar.sample(statistics.total)} · ${f.kindShort(
+            statistics.kind,
+          )}`}
         />
         <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
           <Metric
-            value={formatAmountShort(statistics.median, statistics.unit)}
-            label="медиана по схожим делам"
+            value={f.amountShort(statistics.median, statistics.unit)}
+            label={t.similar.median}
           />
           <Metric
-            value={`${formatAmountShort(statistics.q1, statistics.unit)} — ${formatAmountShort(statistics.q3, statistics.unit)}`}
-            label="межквартильный диапазон"
+            value={`${f.amountShort(
+              statistics.q1,
+              statistics.unit,
+            )} — ${f.amountShort(statistics.q3, statistics.unit)}`}
+            label={t.similar.iqr}
           />
           <Metric
-            value={formatAmountShort(assignedAmount, statistics.unit)}
-            label="назначено по проверяемому делу"
+            value={f.amountShort(assignedAmount, statistics.unit)}
+            label={t.similar.assigned}
             tone={deviationTone === "ok" ? "navy" : deviationTone}
           />
           <Metric
-            value={formatSigma(statistics.deviationSigma)}
-            label="отклонение от медианы"
+            value={f.sigma(statistics.deviationSigma)}
+            label={t.similar.deviation}
             tone={deviationTone}
           />
         </div>
         <div className="border-t border-hair px-4 py-3">
           <p className="max-w-prose text-sm leading-relaxed text-ink-2">
-            {deviation.text} Назначенный размер соответствует{" "}
+            {tr(deviation.text)} {t.similar.percentileBefore}{" "}
             <span className="font-bold text-ink tnum">
-              {statistics.percentile}-му процентилю
+              {t.similar.percentile(statistics.percentile)}
             </span>{" "}
-            выборки: строже назначено в{" "}
-            {formatPercent(1 - statistics.percentile / 100)} схожих дел. Условное
-            осуждение применено в {formatPercent(statistics.suspendedShare)}{" "}
-            приговоров выборки.
+            {t.similar.percentileAfter(
+              f.percent(1 - statistics.percentile / 100),
+            )}{" "}
+            {t.similar.suspendedShare(f.percent(statistics.suspendedShare))}
           </p>
         </div>
       </Panel>
 
       <Panel>
         <PanelHead
-          title="Распределение назначенных наказаний"
-          aside="демонстрационная выборка"
+          title={t.similar.histogramTitle}
+          aside={t.similar.histogramAside}
         />
         <div className="px-4 py-4">
           <PunishmentHistogram statistics={statistics} />
@@ -108,8 +109,8 @@ export function SimilarTab({
 
       <Panel>
         <PanelHead
-          title="Аналогичные приговоры"
-          aside={`показано: ${rows.length} из ${similar.length}`}
+          title={t.similar.tableTitle}
+          aside={t.similar.shown(rows.length, similar.length)}
         />
 
         <div className="flex flex-wrap items-end gap-4 border-b border-hair bg-mist px-4 py-3">
@@ -120,20 +121,20 @@ export function SimilarTab({
               onChange={(event) => setOnlySameKind(event.target.checked)}
               className="h-4 w-4 accent-navy"
             />
-            только тот же вид наказания
+            {t.similar.sameKindOnly}
           </label>
 
           <label className="text-sm">
-            <span className="field-label mb-1">Регион</span>
+            <span className="field-label mb-1">{t.database.filterRegion}</span>
             <select
               value={region}
               onChange={(event) => setRegion(event.target.value)}
               className="input w-56"
             >
-              <option value="all">все регионы</option>
+              <option value="all">{t.database.allRegions}</option>
               {regions.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+                <option key={item.ru} value={item.ru}>
+                  {tr(item)}
                 </option>
               ))}
             </select>
@@ -141,7 +142,7 @@ export function SimilarTab({
 
           <label className="text-sm">
             <span className="field-label mb-1">
-              Близость не ниже: {minSimilarity.toFixed(2)}
+              {t.similar.minSimilarity(minSimilarity.toFixed(2))}
             </span>
             <input
               type="range"
@@ -157,20 +158,17 @@ export function SimilarTab({
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] border-collapse text-sm">
-            <caption className="sr-only">
-              Приговоры по схожим делам с указанием суда, даты, вида и размера
-              наказания
-            </caption>
+            <caption className="sr-only">{t.similar.tableCaption}</caption>
             <thead>
               <tr>
-                <th className="th">Суд</th>
-                <th className="th">Регион</th>
-                <th className="th">Дата</th>
-                <th className="th">Наказание</th>
-                <th className="th text-right">Размер</th>
-                <th className="th text-right">Смягч.</th>
-                <th className="th text-right">Отягч.</th>
-                <th className="th text-right">Близость</th>
+                <th className="th">{t.database.colCourt}</th>
+                <th className="th">{t.database.colRegion}</th>
+                <th className="th">{t.database.colDate}</th>
+                <th className="th">{t.database.colPunishment}</th>
+                <th className="th text-right">{t.database.colAmount}</th>
+                <th className="th text-right">{t.database.colMitigating}</th>
+                <th className="th text-right">{t.database.colAggravating}</th>
+                <th className="th text-right">{t.similar.colSimilarity}</th>
               </tr>
             </thead>
             <tbody>
@@ -185,19 +183,21 @@ export function SimilarTab({
                       isAssignedLevel && "bg-bordo-pale/60",
                     )}
                   >
-                    <td className="cell">{row.court}</td>
-                    <td className="cell text-ink-2">{row.region}</td>
+                    <td className="cell">{tr(row.court)}</td>
+                    <td className="cell text-ink-2">{tr(row.region)}</td>
                     <td className="cell whitespace-nowrap font-mono text-xs">
-                      {formatDate(row.date)}
+                      {f.date(row.date)}
                     </td>
                     <td className="cell">
-                      {kindNameShort(row.kind)}
+                      {f.kindShort(row.kind)}
                       {row.suspended ? (
-                        <span className="ml-1 text-xs text-ink-3">условно</span>
+                        <span className="ml-1 text-xs text-ink-3">
+                          {t.database.suspendedMark}
+                        </span>
                       ) : null}
                     </td>
                     <td className="cell whitespace-nowrap text-right font-bold tnum">
-                      {formatAmountShort(row.amount, row.unit)}
+                      {f.amountShort(row.amount, row.unit)}
                     </td>
                     <td className="cell text-right tnum">{row.mitigating}</td>
                     <td className="cell text-right tnum">{row.aggravating}</td>
@@ -210,7 +210,7 @@ export function SimilarTab({
               {rows.length === 0 ? (
                 <tr>
                   <td className="cell text-center text-ink-3" colSpan={8}>
-                    По заданным условиям приговоров не найдено. Ослабьте фильтры.
+                    {t.similar.emptyRows}
                   </td>
                 </tr>
               ) : null}
@@ -219,9 +219,7 @@ export function SimilarTab({
         </div>
 
         <p className="border-t border-hair px-4 py-2.5 text-xs text-ink-3">
-          Выборка синтетическая и приведена для демонстрации механизма
-          сопоставления. Подсветкой отмечены приговоры с размером наказания,
-          совпадающим с проверяемым решением.
+          {t.similar.syntheticNote}
         </p>
       </Panel>
     </div>

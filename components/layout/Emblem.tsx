@@ -4,13 +4,20 @@
  * Государственный герб намеренно не используется: прототип не является
  * официальным ресурсом государственного органа и не должен выглядеть как он.
  */
-export function Emblem({ className = "h-9 w-9" }: { className?: string }) {
+export function Emblem({
+  className = "h-9 w-9",
+  label,
+}: {
+  className?: string;
+  /** Подпись для средств доступности: приходит из словаря интерфейса. */
+  label: string;
+}) {
   return (
     <svg
       viewBox="0 0 40 40"
       className={className}
       role="img"
-      aria-label="Знак системы «Второе мнение»"
+      aria-label={label}
       fill="none"
     >
       <circle cx="20" cy="20" r="19" stroke="currentColor" strokeWidth="1.25" />
@@ -20,7 +27,12 @@ export function Emblem({ className = "h-9 w-9" }: { className?: string }) {
         strokeWidth="1.5"
         strokeLinecap="round"
       />
-      <path d="M8 14.5h24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path
+        d="M8 14.5h24"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
       <circle cx="20" cy="14.5" r="1.75" fill="currentColor" />
       {/* Левая чаша */}
       <path

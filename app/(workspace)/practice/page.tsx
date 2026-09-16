@@ -3,51 +3,58 @@
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { PRACTICE, PRACTICE_KIND_NAMES } from "@/lib/data/practice";
-import { formatDateLong } from "@/lib/format";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { useI18n } from "@/lib/i18n";
 import { Panel, PanelHead } from "@/components/ui/primitives";
 import type { PracticeItem } from "@/lib/types";
 
-const KIND_FILTERS: Array<{ id: "all" | PracticeItem["kind"]; label: string }> =
-  [
-    { id: "all", label: "Все документы" },
-    { id: "plenum", label: "Постановления Пленума" },
-    { id: "presidium", label: "Позиции Президиума" },
-    { id: "review", label: "Обзоры практики" },
-  ];
-
 export default function PracticePage() {
+  const { t, tr, trAll, f, locale } = useI18n();
   const [kind, setKind] = useState<"all" | PracticeItem["kind"]>("all");
   const [query, setQuery] = useState("");
 
+  const kindFilters: Array<{
+    id: "all" | PracticeItem["kind"];
+    label: string;
+  }> = [
+    { id: "all", label: t.practice.filterAll },
+    { id: "plenum", label: t.practice.filterPlenum },
+    { id: "presidium", label: t.practice.filterPresidium },
+    { id: "review", label: t.practice.filterReview },
+  ];
+
   const items = useMemo(() => {
     const normalized = query.trim().toLowerCase();
+    /* Поиск идёт по тексту на выбранном языке: искать по скрытому
+       переводу пользователь не может. */
     return PRACTICE.filter(
       (item) =>
         (kind === "all" || item.kind === kind) &&
         (normalized === "" ||
-          item.title.toLowerCase().includes(normalized) ||
-          item.excerpt.toLowerCase().includes(normalized) ||
-          item.articles.some((a) => a.toLowerCase().includes(normalized))),
+          item.title[locale].toLowerCase().includes(normalized) ||
+          item.excerpt[locale].toLowerCase().includes(normalized) ||
+          item.articles.some((a) =>
+            a[locale].toLowerCase().includes(normalized),
+          )),
     );
-  }, [kind, query]);
+  }, [kind, query, locale]);
 
   return (
     <>
       <PageHeader
-        eyebrow="Справочные ресурсы"
-        title="Практика Верховного Суда Российской Федерации"
-        lead="Разъяснения Пленума, позиции Президиума и обзоры судебной практики, на которые опираются проверки системы. Каждая проверка ссылается на конкретный документ из этого справочника."
+        eyebrow={t.practice.eyebrow}
+        title={t.practice.title}
+        lead={t.practice.lead}
         crumbs={[
-          { href: "/dashboard", label: "Личный кабинет" },
-          { label: "Практика ВС РФ" },
+          { href: "/dashboard", label: t.nav.dashboard },
+          { label: t.nav.practice },
         ]}
       />
 
       <div className="mx-auto max-w-shell space-y-5 px-4 py-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-wrap gap-2">
-            {KIND_FILTERS.map((item) => {
+            {kindFilters.map((item) => {
               const active = kind === item.id;
               return (
                 <button
@@ -69,12 +76,12 @@ export default function PracticePage() {
           </div>
 
           <label className="block">
-            <span className="field-label mb-1">Поиск по тексту и статьям</span>
+            <span className="field-label mb-1">{t.practice.searchLabel}</span>
             <input
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="например: ст. 62 УК РФ"
+              placeholder={t.practice.searchPlaceholder}
               className="input w-72"
             />
           </label>
@@ -86,23 +93,23 @@ export default function PracticePage() {
               <PanelHead
                 title={
                   <span className="text-2xs uppercase tracking-eyebrow text-ink-3">
-                    {PRACTICE_KIND_NAMES[item.kind]}
+                    {tr(PRACTICE_KIND_NAMES[item.kind])}
                   </span>
                 }
-                aside={formatDateLong(item.date)}
+                aside={f.dateLong(item.date)}
               />
               <div className="px-4 py-3">
                 <h3 className="font-serif text-base leading-snug">
-                  {item.title}
+                  {tr(item.title)}
                 </h3>
-                <p className="mt-1 text-xs text-ink-3">{item.clause}</p>
+                <p className="mt-1 text-xs text-ink-3">{tr(item.clause)}</p>
 
                 <p className="mt-3 max-w-prose border-l-2 border-navy-soft bg-mist px-3 py-2 text-sm leading-relaxed text-ink-2">
-                  {item.excerpt}
+                  {tr(item.excerpt)}
                 </p>
 
                 <ul className="mt-3 flex flex-wrap gap-2">
-                  {item.articles.map((article) => (
+                  {trAll(item.articles).map((article) => (
                     <li
                       key={article}
                       className="border border-rule bg-paper px-2 py-0.5 font-mono text-xs text-navy"
@@ -117,25 +124,16 @@ export default function PracticePage() {
 
           {items.length === 0 ? (
             <p className="border border-dashed border-rule bg-mist px-4 py-8 text-center text-sm text-ink-3">
-              По заданным условиям документов не найдено.
+              {t.practice.empty}
             </p>
           ) : null}
         </div>
 
         <Panel>
-          <PanelHead title="О содержании справочника" />
+          <PanelHead title={t.practice.aboutTitle} />
           <div className="max-w-prose space-y-2 px-4 py-3 text-sm leading-relaxed text-ink-2">
-            <p>
-              Приведённые тексты являются кратким изложением позиций, а не
-              дословными цитатами; раздел документа указан по содержанию, а не
-              номером пункта. Так сделано намеренно: прототип не должен
-              создавать видимость дословного цитирования непроверенного текста.
-            </p>
-            <p>
-              В рабочей версии системы справочник подключается к официальным
-              публикациям Верховного Суда Российской Федерации, а изложения
-              заменяются точными цитатами с указанием пунктов.
-            </p>
+            <p>{t.practice.aboutParaphrase}</p>
+            <p>{t.practice.aboutFuture}</p>
           </div>
         </Panel>
       </div>

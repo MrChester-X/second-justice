@@ -8,15 +8,7 @@ import type {
   ScaleLimit,
   Term,
 } from "@/lib/types";
-import {
-  CATEGORY_NAMES,
-  PRIOR_CONVICTION_NAMES,
-  articleLabel,
-  formatAmount,
-  formatDateLong,
-  kindName,
-  plural,
-} from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 import {
   ConfidenceMark,
   DataRow,
@@ -28,13 +20,6 @@ import {
 } from "@/components/ui/primitives";
 import { SanctionScale } from "./SanctionScale";
 import { findOption, optionBounds } from "@/lib/rules";
-
-/** Единицы измерения размера наказания для подписи поля ввода. */
-const UNIT_LABEL: Record<Term["unit"], string> = {
-  months: "месяцев",
-  hours: "часов",
-  rub: "рублей",
-};
 
 export function ParamsTab({
   params,
@@ -57,6 +42,7 @@ export function ParamsTab({
   statistics: Statistics;
   scaleLimits: ScaleLimit[];
 }) {
+  const { t, tr, f, locale } = useI18n();
   const qualification = params.qualification.value;
   const defendant = params.defendant.value;
   const option = findOption(sanction, term.kind);
@@ -68,35 +54,37 @@ export function ParamsTab({
       <div className="min-w-0 space-y-5">
         <Panel>
           <PanelHead
-            title="Квалификация преступления"
-            aside={<ConfidenceMark confidence={params.qualification.confidence} />}
+            title={t.params.qualificationTitle}
+            aside={
+              <ConfidenceMark confidence={params.qualification.confidence} />
+            }
           />
           <div className="px-4 py-3">
             {qualification ? (
               <>
                 <dl>
                   <DataRow
-                    label="Статья УК РФ"
+                    label={t.params.article}
                     value={
                       <span className="font-bold text-navy">
-                        {articleLabel(qualification.article, qualification.part)}
+                        {f.article(qualification.article, qualification.part)}
                       </span>
                     }
-                    hint={qualification.title}
+                    hint={tr(qualification.title)}
                   />
                   <DataRow
-                    label="Категория преступления"
-                    value={CATEGORY_NAMES[qualification.category]}
-                    hint="ст. 15 УК РФ"
+                    label={t.params.category}
+                    value={f.category(qualification.category)}
+                    hint={t.params.categoryHint}
                   />
                   <DataRow
-                    label="Дата совершения деяния"
-                    value={formatDateLong(qualification.commitDate)}
-                    hint="определяет применимую редакцию закона — ст. 9, 10 УК РФ"
+                    label={t.params.commitDate}
+                    value={f.dateLong(qualification.commitDate)}
+                    hint={t.params.commitDateHint}
                   />
                   <DataRow
-                    label="Применённая редакция"
-                    value={sanction.edition}
+                    label={t.params.edition}
+                    value={tr(sanction.edition)}
                   />
                 </dl>
                 {params.qualification.quote ? (
@@ -107,7 +95,7 @@ export function ParamsTab({
               </>
             ) : (
               <p className="text-sm text-bordo">
-                Квалификация не извлечена. Укажите статью вручную.
+                {t.params.qualificationMissing}
               </p>
             )}
           </div>
@@ -115,39 +103,60 @@ export function ParamsTab({
 
         <Panel>
           <PanelHead
-            title="Сведения о личности подсудимого"
+            title={t.params.defendantTitle}
             aside={<ConfidenceMark confidence={params.defendant.confidence} />}
           />
           <div className="px-4 py-3">
             {defendant ? (
               <>
                 <dl>
-                  <DataRow label="Фамилия, имя, отчество" value={defendant.fio} />
+                  <DataRow label={t.params.fio} value={tr(defendant.fio)} />
                   <DataRow
-                    label="Дата рождения, возраст"
-                    value={`${formatDateLong(defendant.birthDate)} — ${defendant.age} ${plural(defendant.age, "год", "года", "лет")}`}
-                  />
-                  <DataRow label="Гражданство" value={defendant.citizenship} />
-                  <DataRow
-                    label="Место регистрации"
-                    value={defendant.registration}
+                    label={t.params.birth}
+                    value={`${f.dateLong(
+                      defendant.birthDate,
+                    )} — ${t.params.ageValue(defendant.age)}`}
                   />
                   <DataRow
-                    label="Семейное положение"
-                    value={`${defendant.maritalStatus}, иждивенцев: ${defendant.dependents}`}
-                  />
-                  <DataRow label="Занятость" value={defendant.employment} />
-                  <DataRow label="Образование" value={defendant.education} />
-                  <DataRow
-                    label="Судимости"
-                    value={PRIOR_CONVICTION_NAMES[defendant.priorConvictions]}
-                    hint={defendant.priorConvictionsNote}
+                    label={t.params.citizenship}
+                    value={tr(defendant.citizenship)}
                   />
                   <DataRow
-                    label="Рецидив (ст. 18 УК РФ)"
-                    value={defendant.recidivism ? "установлен" : "не установлен"}
+                    label={t.params.registration}
+                    value={tr(defendant.registration)}
                   />
-                  <DataRow label="Состояние здоровья" value={defendant.health} />
+                  <DataRow
+                    label={t.params.marital}
+                    value={t.params.maritalValue(
+                      tr(defendant.maritalStatus),
+                      defendant.dependents,
+                    )}
+                  />
+                  <DataRow
+                    label={t.params.employment}
+                    value={tr(defendant.employment)}
+                  />
+                  <DataRow
+                    label={t.params.education}
+                    value={tr(defendant.education)}
+                  />
+                  <DataRow
+                    label={t.params.priorConvictions}
+                    value={f.priorConvictions(defendant.priorConvictions)}
+                    hint={tr(defendant.priorConvictionsNote)}
+                  />
+                  <DataRow
+                    label={t.params.recidivism}
+                    value={
+                      defendant.recidivism
+                        ? t.params.established
+                        : t.params.notEstablished
+                    }
+                  />
+                  <DataRow
+                    label={t.params.health}
+                    value={tr(defendant.health)}
+                  />
                 </dl>
                 {params.defendant.quote ? (
                   <div className="mt-3">
@@ -156,9 +165,7 @@ export function ParamsTab({
                 ) : null}
               </>
             ) : (
-              <p className="text-sm text-bordo">
-                Сведения о личности не извлечены. Заполните вручную.
-              </p>
+              <p className="text-sm text-bordo">{t.params.defendantMissing}</p>
             )}
           </div>
         </Panel>
@@ -166,19 +173,21 @@ export function ParamsTab({
         <div className="grid gap-5 md:grid-cols-2">
           <Panel>
             <PanelHead
-              title="Смягчающие обстоятельства"
-              aside={`ст. 61 УК РФ · ${params.mitigating.length}`}
+              title={t.params.mitigatingTitle}
+              aside={`${t.params.mitigatingNorm} · ${params.mitigating.length}`}
             />
             <ul className="divide-y divide-hair">
               {params.mitigating.map((item) => (
-                <li key={item.norm + item.text} className="px-4 py-2.5">
-                  <div className="font-mono text-xs text-navy">{item.norm}</div>
-                  <div className="mt-0.5 text-sm">{item.text}</div>
+                <li key={item.norm.ru + item.text.ru} className="px-4 py-2.5">
+                  <div className="font-mono text-xs text-navy">
+                    {tr(item.norm)}
+                  </div>
+                  <div className="mt-0.5 text-sm">{tr(item.text)}</div>
                 </li>
               ))}
               {params.mitigating.length === 0 ? (
                 <li className="px-4 py-3 text-sm text-ink-3">
-                  Смягчающих обстоятельств не установлено.
+                  {t.params.mitigatingEmpty}
                 </li>
               ) : null}
             </ul>
@@ -186,19 +195,21 @@ export function ParamsTab({
 
           <Panel>
             <PanelHead
-              title="Отягчающие обстоятельства"
-              aside={`ст. 63 УК РФ · ${params.aggravating.length}`}
+              title={t.params.aggravatingTitle}
+              aside={`${t.params.aggravatingNorm} · ${params.aggravating.length}`}
             />
             <ul className="divide-y divide-hair">
               {params.aggravating.map((item) => (
-                <li key={item.norm + item.text} className="px-4 py-2.5">
-                  <div className="font-mono text-xs text-bordo">{item.norm}</div>
-                  <div className="mt-0.5 text-sm">{item.text}</div>
+                <li key={item.norm.ru + item.text.ru} className="px-4 py-2.5">
+                  <div className="font-mono text-xs text-bordo">
+                    {tr(item.norm)}
+                  </div>
+                  <div className="mt-0.5 text-sm">{tr(item.text)}</div>
                 </li>
               ))}
               {params.aggravating.length === 0 ? (
                 <li className="px-4 py-3 text-sm text-ink-3">
-                  Отягчающих обстоятельств не установлено.
+                  {t.params.aggravatingEmpty}
                 </li>
               ) : null}
             </ul>
@@ -206,53 +217,63 @@ export function ParamsTab({
         </div>
 
         <Panel>
-          <PanelHead title="Процессуальные особенности" />
+          <PanelHead title={t.params.procedureTitle} />
           <dl className="px-4 py-3">
             <DataRow
-              label="Особый порядок (гл. 40 УПК РФ)"
-              value={params.procedure.specialOrder ? "применён" : "не применялся"}
+              label={t.params.specialOrder}
+              value={
+                params.procedure.specialOrder
+                  ? t.params.applied
+                  : t.params.notApplied
+              }
               hint={
                 params.procedure.specialOrder
-                  ? "влечёт применение ч. 5 ст. 62 УК РФ"
+                  ? t.params.specialOrderHint
                   : undefined
               }
             />
             <DataRow
-              label="Досудебное соглашение (гл. 40.1 УПК РФ)"
+              label={t.params.preTrial}
               value={
-                params.procedure.preTrialAgreement ? "заключено" : "не заключалось"
+                params.procedure.preTrialAgreement
+                  ? t.params.concluded
+                  : t.params.notConcluded
               }
               hint={
                 params.procedure.preTrialAgreement
-                  ? "влечёт применение ч. 2 ст. 62 УК РФ"
+                  ? t.params.preTrialHint
                   : undefined
               }
             />
             <DataRow
-              label="Вердикт присяжных (ст. 65 УК РФ)"
-              value={params.procedure.juryVerdict ? "вынесен" : "не выносился"}
-            />
-            <DataRow
-              label="Неоконченное преступление (ст. 66 УК РФ)"
+              label={t.params.jury}
               value={
-                params.procedure.incomplete === "none"
-                  ? "преступление окончено"
-                  : params.procedure.incomplete === "attempt"
-                    ? "покушение"
-                    : "приготовление"
+                params.procedure.juryVerdict
+                  ? t.params.returned
+                  : t.params.notReturned
               }
             />
             <DataRow
-              label="Преступление совершено впервые"
-              value={params.procedure.firstOffence ? "да" : "нет"}
+              label={t.params.incomplete}
+              value={t.params.incompleteValue[params.procedure.incomplete]}
             />
             <DataRow
-              label="Вред возмещён"
-              value={params.procedure.damageCompensated ? "да" : "нет"}
+              label={t.params.firstOffence}
+              value={params.procedure.firstOffence ? t.common.yes : t.common.no}
             />
             <DataRow
-              label="Примирение с потерпевшим"
-              value={params.procedure.reconciled ? "заявлено" : "не заявлялось"}
+              label={t.params.damageCompensated}
+              value={
+                params.procedure.damageCompensated ? t.common.yes : t.common.no
+              }
+            />
+            <DataRow
+              label={t.params.reconciled}
+              value={
+                params.procedure.reconciled
+                  ? t.params.declared
+                  : t.params.notDeclared
+              }
             />
           </dl>
         </Panel>
@@ -262,20 +283,20 @@ export function ParamsTab({
       <div className="space-y-5">
         <Panel className="lg:sticky lg:top-4">
           <PanelHead
-            title="Назначенное наказание"
+            title={t.params.punishmentTitle}
             aside={<ConfidenceMark confidence={params.punishment.confidence} />}
           />
           <div className="space-y-4 px-4 py-3">
             <div>
-              <span className="field-label">Основное наказание</span>
+              <span className="field-label">{t.params.mainPunishment}</span>
               <p className="mt-1 text-sm font-bold text-navy">
-                {kindName(term.kind)}
+                {f.kind(term.kind)}
               </p>
             </div>
 
             <div>
               <label className="field-label" htmlFor="punishment-amount">
-                Размер, {UNIT_LABEL[term.unit]}
+                {t.params.amountLabel(t.params.units[term.unit])}
               </label>
               <div className="mt-1 flex items-center gap-2">
                 <input
@@ -290,60 +311,74 @@ export function ParamsTab({
                   className="input w-32 tnum"
                 />
                 <span className="text-sm text-ink-2">
-                  {formatAmount(term.amount, term.unit)}
+                  {f.amount(term.amount, term.unit)}
                 </span>
               </div>
               {bounds ? (
                 <p className="mt-1.5 text-xs text-ink-3">
-                  Диапазон по санкции: {formatAmount(bounds.min, term.unit)} —{" "}
-                  {formatAmount(bounds.max, term.unit)}.
+                  {t.params.rangeHint(
+                    f.amount(bounds.min, term.unit),
+                    f.amount(bounds.max, term.unit),
+                  )}
                 </p>
               ) : null}
             </div>
 
             {term.note ? (
               <div>
-                <span className="field-label">Порядок отбывания</span>
-                <p className="mt-0.5 text-sm">{term.note}</p>
+                <span className="field-label">{t.params.serving}</span>
+                <p className="mt-0.5 text-sm">{tr(term.note)}</p>
               </div>
             ) : null}
 
             <div>
-              <span className="field-label">Дополнительное наказание</span>
+              <span className="field-label">{t.params.additional}</span>
               <p className="mt-0.5 text-sm">
                 {params.punishment.value?.additional.length
                   ? params.punishment.value.additional
-                      .map((item) => `${kindName(item.kind)} ${formatAmount(item.amount, item.unit)}`)
+                      .map(
+                        (item) =>
+                          `${f.kind(item.kind)} ${f.amount(
+                            item.amount,
+                            item.unit,
+                          )}`,
+                      )
                       .join("; ")
-                  : "не назначено"}
+                  : t.params.additionalNone}
               </p>
             </div>
 
             {edited ? (
               <div className="border border-navy-soft bg-navy-pale px-3 py-2 text-xs">
                 <p className="text-ink-2">
-                  Размер изменён: {formatAmount(originalAmount, term.unit)} →{" "}
+                  {t.params.editedFrom} {f.amount(originalAmount, term.unit)} →{" "}
                   <span className="font-bold text-ink">
-                    {formatAmount(term.amount, term.unit)}
+                    {f.amount(term.amount, term.unit)}
                   </span>
-                  . Проверка пределов и статистика пересчитаны.
+                  . {t.params.editedNote}
                 </p>
                 <button
                   type="button"
                   onClick={onReset}
                   className="mt-1.5 font-bold text-navy underline"
                 >
-                  Вернуть исходное значение
+                  {t.params.resetAmount}
                 </button>
               </div>
             ) : null}
 
             <div
-              className={`border-l-2 bg-mist px-3 py-2.5 ${VERDICT_BORDER[liveCheck.verdict]}`}
+              className={`border-l-2 bg-mist px-3 py-2.5 ${
+                VERDICT_BORDER[liveCheck.verdict]
+              }`}
             >
               <StatusMark verdict={liveCheck.verdict} />
-              <p className="mt-1 text-sm font-bold text-ink">{liveCheck.title}</p>
-              <p className="mt-0.5 text-xs text-ink-2">{liveCheck.summary}</p>
+              <p className="mt-1 text-sm font-bold text-ink">
+                {tr(liveCheck.title)}
+              </p>
+              <p className="mt-0.5 text-xs text-ink-2">
+                {tr(liveCheck.summary)}
+              </p>
             </div>
 
             {params.punishment.quote ? (
@@ -355,10 +390,7 @@ export function ParamsTab({
 
       <div className="min-w-0 lg:col-span-2">
         <Panel>
-          <PanelHead
-            title="Наказание на шкале санкции"
-            aside="санкция · пределы Общей части · практика"
-          />
+          <PanelHead title={t.params.scaleTitle} aside={t.params.scaleAside} />
           <div className="px-4 py-4">
             {option ? (
               <SanctionScale
@@ -366,20 +398,24 @@ export function ParamsTab({
                 limits={scaleLimits}
                 assigned={term.amount}
                 statistics={statistics}
-                sanctionLabel={sanction.label}
+                sanctionLabel={tr(sanction.label)}
               />
             ) : (
-              <p className="text-sm text-bordo">
-                Назначенный вид наказания санкцией не предусмотрен, шкала не
-                строится.
-              </p>
+              <p className="text-sm text-bordo">{t.params.scaleImpossible}</p>
             )}
             <div className="mt-4 border-t border-hair pt-3">
-              <p className="eyebrow mb-1">Текст санкции</p>
+              <p className="eyebrow mb-1">{t.params.sanctionText}</p>
               <p className="max-w-prose text-sm leading-relaxed text-ink-2">
                 {sanction.text}
               </p>
-              <p className="mt-1.5 text-xs text-ink-3">{sanction.edition}</p>
+              {locale === "ru" ? null : (
+                <p className="mt-1 text-2xs uppercase tracking-eyebrow text-ink-3">
+                  {t.common.originalLanguage}
+                </p>
+              )}
+              <p className="mt-1.5 text-xs text-ink-3">
+                {tr(sanction.edition)}
+              </p>
             </div>
           </div>
         </Panel>

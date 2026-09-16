@@ -7,13 +7,8 @@ import {
   SENTENCES,
   YEARS_IN_BASE,
 } from "@/lib/data/sentences";
-import {
-  formatAmountShort,
-  formatDate,
-  kindNameShort,
-  plural,
-} from "@/lib/format";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { useI18n } from "@/lib/i18n";
 import { Panel, PanelHead } from "@/components/ui/primitives";
 import type { PunishmentKind } from "@/lib/types";
 
@@ -30,6 +25,9 @@ const KINDS: PunishmentKind[] = [
 const PAGE_SIZE = 25;
 
 export default function DatabasePage() {
+  const { t, tr, f } = useI18n();
+  /* Значения фильтров — русские строки: они служат ключами и не зависят
+     от выбранного языка, поэтому выбор переживает переключение. */
   const [article, setArticle] = useState("all");
   const [region, setRegion] = useState("all");
   const [year, setYear] = useState("all");
@@ -41,8 +39,8 @@ export default function DatabasePage() {
     () =>
       SENTENCES.filter(
         (s) =>
-          (article === "all" || s.article === article) &&
-          (region === "all" || s.region === region) &&
+          (article === "all" || s.article.ru === article) &&
+          (region === "all" || s.region.ru === region) &&
           (year === "all" || s.date.startsWith(year)) &&
           (kind === "all" || s.kind === kind) &&
           (suspended === "all" ||
@@ -63,54 +61,60 @@ export default function DatabasePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Справочные ресурсы"
-        title="База судебных решений"
-        lead="Выборка приговоров, по которой система сопоставляет проверяемое решение с практикой. Фильтры повторяют ключевые параметры сопоставления: статья, регион, год, вид наказания."
+        eyebrow={t.database.eyebrow}
+        title={t.database.title}
+        lead={t.database.lead}
         crumbs={[
-          { href: "/dashboard", label: "Личный кабинет" },
-          { label: "База решений" },
+          { href: "/dashboard", label: t.nav.dashboard },
+          { label: t.nav.database },
         ]}
       />
 
       <div className="mx-auto max-w-shell space-y-5 px-4 py-6">
         <Panel>
           <PanelHead
-            title="Условия отбора"
+            title={t.database.filtersTitle}
             aside={
               <button
                 type="button"
                 onClick={resetFilters}
                 className="text-navy underline"
               >
-                Сбросить
+                {t.database.reset}
               </button>
             }
           />
           <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-5">
             <Select
-              label="Статья УК РФ"
+              label={t.database.filterArticle}
               value={article}
               onChange={setArticle}
               options={[
-                { value: "all", label: "все статьи" },
-                ...ARTICLES_IN_BASE.map((a) => ({ value: a, label: a })),
+                { value: "all", label: t.database.allArticles },
+                ...ARTICLES_IN_BASE.map((a) => ({
+                  value: a.ru,
+                  label: tr(a),
+                })),
               ]}
             />
             <Select
-              label="Регион"
+              label={t.database.filterRegion}
               value={region}
               onChange={setRegion}
               options={[
-                { value: "all", label: "все регионы" },
-                ...REGIONS_IN_BASE.map((r) => ({ value: r, label: r })),
+                { value: "all", label: t.database.allRegions },
+                ...REGIONS_IN_BASE.map((r) => ({
+                  value: r.ru,
+                  label: tr(r),
+                })),
               ]}
             />
             <Select
-              label="Год"
+              label={t.database.filterYear}
               value={year}
               onChange={setYear}
               options={[
-                { value: "all", label: "все годы" },
+                { value: "all", label: t.database.allYears },
                 ...YEARS_IN_BASE.map((y) => ({
                   value: String(y),
                   label: String(y),
@@ -118,22 +122,22 @@ export default function DatabasePage() {
               ]}
             />
             <Select
-              label="Вид наказания"
+              label={t.database.filterKind}
               value={kind}
               onChange={setKind}
               options={[
-                { value: "all", label: "любой" },
-                ...KINDS.map((k) => ({ value: k, label: kindNameShort(k) })),
+                { value: "all", label: t.database.anyKind },
+                ...KINDS.map((k) => ({ value: k, label: f.kindShort(k) })),
               ]}
             />
             <Select
-              label="Условное осуждение"
+              label={t.database.filterSuspended}
               value={suspended}
               onChange={setSuspended}
               options={[
-                { value: "all", label: "не важно" },
-                { value: "yes", label: "только условное" },
-                { value: "no", label: "только реальное" },
+                { value: "all", label: t.database.suspendedAny },
+                { value: "yes", label: t.database.suspendedOnly },
+                { value: "no", label: t.database.realOnly },
               ]}
             />
           </div>
@@ -141,22 +145,22 @@ export default function DatabasePage() {
 
         <Panel>
           <PanelHead
-            title="Судебные решения"
-            aside={`найдено ${rows.length} ${plural(rows.length, "приговор", "приговора", "приговоров")}`}
+            title={t.database.tableTitle}
+            aside={t.database.found(rows.length)}
           />
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="th">Номер</th>
-                  <th className="th">Суд</th>
-                  <th className="th">Регион</th>
-                  <th className="th">Дата</th>
-                  <th className="th">Статья</th>
-                  <th className="th">Наказание</th>
-                  <th className="th text-right">Размер</th>
-                  <th className="th text-right">Смягч.</th>
-                  <th className="th text-right">Отягч.</th>
+                  <th className="th">{t.database.colId}</th>
+                  <th className="th">{t.database.colCourt}</th>
+                  <th className="th">{t.database.colRegion}</th>
+                  <th className="th">{t.database.colDate}</th>
+                  <th className="th">{t.database.colArticle}</th>
+                  <th className="th">{t.database.colPunishment}</th>
+                  <th className="th text-right">{t.database.colAmount}</th>
+                  <th className="th text-right">{t.database.colMitigating}</th>
+                  <th className="th text-right">{t.database.colAggravating}</th>
                 </tr>
               </thead>
               <tbody>
@@ -165,22 +169,24 @@ export default function DatabasePage() {
                     <td className="cell whitespace-nowrap font-mono text-xs">
                       {row.id}
                     </td>
-                    <td className="cell">{row.court}</td>
-                    <td className="cell text-ink-2">{row.region}</td>
+                    <td className="cell">{tr(row.court)}</td>
+                    <td className="cell text-ink-2">{tr(row.region)}</td>
                     <td className="cell whitespace-nowrap font-mono text-xs">
-                      {formatDate(row.date)}
+                      {f.date(row.date)}
                     </td>
                     <td className="cell whitespace-nowrap font-mono text-xs">
-                      {row.article}
+                      {tr(row.article)}
                     </td>
                     <td className="cell">
-                      {kindNameShort(row.kind)}
+                      {f.kindShort(row.kind)}
                       {row.suspended ? (
-                        <span className="ml-1 text-xs text-ink-3">условно</span>
+                        <span className="ml-1 text-xs text-ink-3">
+                          {t.database.suspendedMark}
+                        </span>
                       ) : null}
                     </td>
                     <td className="cell whitespace-nowrap text-right font-bold tnum">
-                      {formatAmountShort(row.amount, row.unit)}
+                      {f.amountShort(row.amount, row.unit)}
                     </td>
                     <td className="cell text-right tnum">{row.mitigating}</td>
                     <td className="cell text-right tnum">{row.aggravating}</td>
@@ -189,7 +195,7 @@ export default function DatabasePage() {
                 {rows.length === 0 ? (
                   <tr>
                     <td className="cell text-center text-ink-3" colSpan={9}>
-                      По заданным условиям решений не найдено.
+                      {t.database.empty}
                     </td>
                   </tr>
                 ) : null}
@@ -204,15 +210,13 @@ export default function DatabasePage() {
                 onClick={() => setLimit((value) => value + PAGE_SIZE)}
                 className="btn btn-ghost"
               >
-                Показать ещё {Math.min(PAGE_SIZE, rows.length - limit)}
+                {t.database.showMore(Math.min(PAGE_SIZE, rows.length - limit))}
               </button>
             </div>
           ) : null}
 
           <p className="border-t border-hair px-4 py-2.5 text-xs text-ink-3">
-            Выборка синтетическая: суды, даты и размеры наказаний сгенерированы
-            для демонстрации механизма сопоставления. Реальные судебные акты не
-            использованы.
+            {t.database.syntheticNote}
           </p>
         </Panel>
       </div>
