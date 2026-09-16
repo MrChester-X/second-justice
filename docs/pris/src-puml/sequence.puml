@@ -1,0 +1,109 @@
+@startuml
+!include style.iuml
+title Диаграмма последовательности: проверка проекта приговора
+
+actor "Судья" as J
+participant "Web UI" as UI
+participant "API Gateway" as GW
+participant "case-service" as CASE
+participant "extraction-service\n[ML]" as EXTR
+participant "rules-engine" as RULES
+participant "similarity-service\n[ML]" as SIM
+participant "statistics-service" as STAT
+database "S3" as S3
+database "PostgreSQL" as PG
+database "Qdrant" as VEC
+
+J -> UI : загрузить проект приговора
+activate UI
+UI -> GW : POST /api/v1/documents
+activate GW
+GW -> CASE : создать документ
+activate CASE
+CASE -> S3 : сохранить файл
+CASE -> PG : записать метаданные
+CASE --> GW : documentId
+deactivate CASE
+GW --> UI : documentId
+deactivate GW
+
+UI -> GW : POST /api/v1/cases {documentId}
+activate GW
+GW -> CASE : создать дело
+activate CASE
+CASE -> EXTR : извлечь параметры
+activate EXTR
+EXTR -> S3 : получить текст
+EXTR -> EXTR : разметка сущностей,\nоценка достоверности
+EXTR --> CASE : поля + confidence + версия модели
+deactivate EXTR
+CASE -> PG : сохранить параметры и прогноз
+CASE --> GW : caseId, параметры
+deactivate CASE
+GW --> UI : параметры с достоверностью
+deactivate GW
+UI --> J : показать параметры
+
+opt параметр извлечен неверно
+  J -> UI : исправить значение
+  UI -> GW : PATCH /api/v1/cases/{id}/fields
+  GW -> CASE : обновить поле
+  activate CASE
+  CASE -> PG : пометить is_corrected
+  deactivate CASE
+end
+
+J -> UI : запустить проверку
+UI -> GW : POST /api/v1/cases/{id}/check
+activate GW
+GW -> RULES : проверить санкцию и Общую часть
+activate RULES
+RULES -> PG : справочники санкций и правил
+RULES --> GW : вердикты и расчетные пределы
+deactivate RULES
+GW -> SIM : подобрать аналоги
+activate SIM
+SIM -> VEC : ANN-поиск по эмбеддингу дела
+VEC --> SIM : top-k приговоров
+SIM -> PG : дополнить метаданными
+SIM --> GW : список аналогов
+deactivate SIM
+GW -> STAT : распределение сроков и отклонение
+activate STAT
+STAT --> GW : медиана, квантили, дельта
+deactivate STAT
+GW --> UI : вердикты, аналоги, статистика
+deactivate GW
+UI --> J : результат проверки
+
+loop пока судья меняет срок
+  J -> UI : изменить срок наказания
+  UI -> GW : POST /api/v1/cases/{id}/recalculate
+  activate GW
+  GW -> RULES : пересчитать по новому сроку
+  activate RULES
+  RULES --> GW : обновленные вердикты
+  deactivate RULES
+  GW -> STAT : пересчитать отклонение
+  activate STAT
+  STAT --> GW : новая дельта
+  deactivate STAT
+  GW --> UI : обновленные данные
+  deactivate GW
+  UI --> J : мгновенный пересчет
+end
+
+J -> UI : сформировать заключение
+UI -> GW : POST /api/v1/cases/{id}/report
+activate GW
+GW -> CASE : собрать заключение
+activate CASE
+CASE -> S3 : сохранить PDF
+CASE -> PG : запись в архив
+CASE --> GW : ссылка на заключение
+deactivate CASE
+GW --> UI : ссылка
+deactivate GW
+UI --> J : открыть для печати
+deactivate UI
+@enduml

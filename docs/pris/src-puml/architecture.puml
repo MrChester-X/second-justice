@@ -1,0 +1,67 @@
+@startuml
+!include style.iuml
+title Архитектура ИС «Второе мнение» с учетом распределенного хранения данных
+
+rectangle "Клиентский слой" {
+  rectangle "Веб-интерфейс судьи\nNext.js 15 / React 19" as UI
+}
+
+rectangle "Слой приложений" {
+  component "api-gateway\nаутентификация, маршрутизация" as GW
+  component "case-service\nдела, параметры, заключения" as CASE
+  component "rules-engine\nсанкции и Общая часть" as RULES
+  component "extraction-service\nизвлечение параметров [ML]" as EXTR
+  component "similarity-service\nподбор аналогов [ML]" as SIM
+  component "statistics-service\nраспределения и отклонения" as STAT
+  component "report-service\nформирование заключения" as REP
+}
+
+rectangle "Слой данных (распределенное хранение)" {
+  database "PostgreSQL\nOLTP: дела, проверки,\nпользователи, справочники" as PG
+  database "Qdrant\nвекторный индекс\nэмбеддингов приговоров" as VEC
+  database "OpenSearch\nполнотекстовый индекс\nтекстов приговоров" as FTS
+  database "ClickHouse\nаналитическая витрина\nраспределений сроков" as CH
+  database "S3 (MinIO)\nисходные документы,\nPDF заключений, тексты" as S3
+}
+
+rectangle "Конвейер загрузки корпуса" {
+  component "ingestion-pipeline\nсбор, очистка, разметка,\nпостроение эмбеддингов" as ETL
+  component "model-registry\nверсии моделей и метрик" as MR
+}
+
+rectangle "Внешние источники" {
+  rectangle "ГАС «Правосудие»,\nоткрытые банки решений" as EXT
+  rectangle "Официальные тексты\nУК РФ и изменений" as LAW
+}
+
+UI --> GW
+GW --> CASE
+GW --> RULES
+GW --> EXTR
+GW --> SIM
+GW --> STAT
+GW --> REP
+
+CASE --> PG
+CASE --> S3
+RULES --> PG
+EXTR --> S3
+EXTR --> PG
+EXTR ..> MR
+SIM --> VEC
+SIM --> FTS
+SIM --> PG
+SIM ..> MR
+STAT --> CH
+REP --> S3
+REP --> PG
+
+EXT --> ETL
+LAW --> ETL
+ETL --> S3
+ETL --> PG
+ETL --> VEC
+ETL --> FTS
+ETL --> CH
+ETL ..> MR
+@enduml

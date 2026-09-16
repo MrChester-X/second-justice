@@ -1,0 +1,175 @@
+@startuml
+!include style.iuml
+hide circle
+skinparam linetype ortho
+title Структура данных ИС «Второе мнение»
+
+entity "users\n(пользователь)" as users {
+  * id : uuid <<PK>>
+  --
+  * login : varchar <<UQ>>
+  * full_name : varchar
+  * role : enum(judge, assistant, admin)
+  court_id : uuid <<FK>>
+  * created_at : timestamptz
+}
+
+entity "courts\n(суд)" as courts {
+  * id : uuid <<PK>>
+  --
+  * name : varchar
+  * region_code : varchar
+  * level : enum
+}
+
+entity "case_documents\n(документ дела)" as docs {
+  * id : uuid <<PK>>
+  --
+  * user_id : uuid <<FK>>
+  * storage_key : varchar
+  * mime_type : varchar
+  * sha256 : varchar <<UQ>>
+  * uploaded_at : timestamptz
+  * extraction_status : enum
+}
+
+entity "cases\n(проверяемое дело)" as cases {
+  * id : uuid <<PK>>
+  --
+  * user_id : uuid <<FK>>
+  document_id : uuid <<FK>>
+  * article : varchar
+  * part : int
+  * status : enum(draft, checked, archived)
+  * created_at : timestamptz
+  * updated_at : timestamptz
+}
+
+entity "extracted_fields\n(извлеченный параметр)" as fields {
+  * id : uuid <<PK>>
+  --
+  * case_id : uuid <<FK>>
+  * name : varchar
+  * value : jsonb
+  * confidence : numeric(4,3)
+  source_span : int4range
+  * is_corrected : boolean
+  * model_version : varchar
+}
+
+entity "punishments\n(наказание)" as pun {
+  * id : uuid <<PK>>
+  --
+  * case_id : uuid <<FK>>
+  * kind : enum
+  term_months : int
+  fine_amount : numeric
+  additional : varchar
+  * is_current : boolean
+}
+
+entity "sanction_rules\n(санкция статьи)" as sanc {
+  * id : uuid <<PK>>
+  --
+  * article : varchar
+  * part : int
+  * kind : enum
+  min_value : int
+  max_value : int
+  * valid_from : date
+  valid_to : date
+  --
+  UNIQUE (article, part, kind, valid_from)
+}
+
+entity "general_part_rules\n(правило Общей части)" as gpr {
+  * id : uuid <<PK>>
+  --
+  * code : varchar <<UQ>>
+  * title : varchar
+  * condition : jsonb
+  * coefficient : numeric(3,2)
+  * base : enum(max, min)
+}
+
+entity "legal_checks\n(правовая проверка)" as checks {
+  * id : uuid <<PK>>
+  --
+  * case_id : uuid <<FK>>
+  sanction_rule_id : uuid <<FK>>
+  general_rule_id : uuid <<FK>>
+  * verdict : enum(ok, warning, violation)
+  * computed_min : int
+  * computed_max : int
+  * basis : text
+}
+
+entity "sentences\n(приговор из корпуса)" as sent {
+  * id : uuid <<PK>>
+  --
+  * court_id : uuid <<FK>>
+  * article : varchar
+  * part : int
+  * decided_at : date
+  * term_months : int
+  * punishment_kind : enum
+  features : jsonb
+  * source : varchar
+  * text_key : varchar
+}
+
+entity "sentence_embeddings\n(векторное представление)" as emb {
+  * sentence_id : uuid <<PK,FK>>
+  --
+  * vector : vector(768)
+  * model_version : varchar
+  * built_at : timestamptz
+}
+
+entity "similar_sentences\n(подобранный аналог)" as sim {
+  * id : uuid <<PK>>
+  --
+  * case_id : uuid <<FK>>
+  * sentence_id : uuid <<FK>>
+  * similarity : numeric(5,4)
+  * rank : int
+  --
+  UNIQUE (case_id, sentence_id)
+}
+
+entity "predictions\n(прогноз модели)" as pred {
+  * id : uuid <<PK>>
+  --
+  * case_id : uuid <<FK>>
+  * model_name : varchar
+  * model_version : varchar
+  * value : jsonb
+  * latency_ms : int
+  * created_at : timestamptz
+}
+
+entity "reports\n(заключение)" as rep {
+  * id : uuid <<PK>>
+  --
+  * case_id : uuid <<FK>>
+  * storage_key : varchar
+  * generated_at : timestamptz
+  * disclaimer_version : varchar
+}
+
+courts ||--o{ users
+users ||--o{ docs
+users ||--o{ cases
+docs ||--o| cases
+cases ||--o{ fields
+cases ||--o{ pun
+cases ||--o{ checks
+cases ||--o{ sim
+cases ||--o{ pred
+cases ||--o{ rep
+sanc ||--o{ checks
+gpr ||--o{ checks
+courts ||--o{ sent
+sent ||--|| emb
+sent ||--o{ sim
+@enduml

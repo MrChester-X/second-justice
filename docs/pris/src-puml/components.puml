@@ -1,0 +1,56 @@
+@startuml
+!include style.iuml
+title Диаграмма компонентов ИС «Второе мнение»
+
+package "Клиент" {
+  component "Web UI" as UI
+  component "Состояние (Zustand)" as ST
+  component "Модуль печати\nзаключения" as PR
+}
+
+package "Сервер приложений" {
+  component "API Gateway" as GW
+  interface "REST /api/v1" as IGW
+  component "Case Service" as CASE
+  component "Rules Engine" as RULES
+  interface "IRuleEvaluator" as IRULE
+  component "Extraction Service" as EXTR
+  interface "IExtractor" as IEXTR
+  component "Similarity Service" as SIM
+  interface "ISimilaritySearch" as ISIM
+  component "Statistics Service" as STAT
+  component "Report Service" as REP
+  component "Auth Service" as AUTH
+}
+
+package "Хранилища" {
+  component "PostgreSQL Adapter" as PGA
+  component "Vector Store Adapter" as VECA
+  component "Object Store Adapter" as S3A
+  component "Analytics Adapter" as CHA
+}
+
+UI --> ST
+UI --> PR
+UI ..> IGW
+IGW - GW
+GW --> AUTH
+GW --> CASE
+CASE ..> IEXTR
+IEXTR - EXTR
+CASE ..> IRULE
+IRULE - RULES
+CASE ..> ISIM
+ISIM - SIM
+CASE --> STAT
+CASE --> REP
+CASE --> PGA
+EXTR --> S3A
+EXTR --> PGA
+RULES --> PGA
+SIM --> VECA
+SIM --> PGA
+STAT --> CHA
+REP --> S3A
+AUTH --> PGA
+@enduml

@@ -1,0 +1,112 @@
+@startuml
+!include style.iuml
+title Диаграмма классов предметной модели
+
+class Case <<aggregate root>> {
+  + id: CaseId
+  + article: ArticleRef
+  + status: CaseStatus
+  --
+  + applyExtraction(r: ExtractionResult): void
+  + correctField(name: string, v: any): void
+  + changePunishment(p: Punishment): void
+  + runChecks(): LegalCheck[]
+}
+
+class CaseDocument <<entity>> {
+  + storageKey: S3Key
+  + sha256: string
+  + mimeType: string
+  --
+  + isSupported(): boolean
+}
+
+class ExtractedField <<value object>> {
+  + name: string
+  + value: any
+  + confidence: Confidence
+  + isCorrected: boolean
+}
+
+class Punishment <<value object>> {
+  + kind: PunishmentKind
+  + termMonths: int
+  + additional: string
+  --
+  + toMonths(): int
+}
+
+class ArticleRef <<value object>> {
+  + article: string
+  + part: int
+}
+
+class SanctionRule <<entity>> {
+  + kind: PunishmentKind
+  + minValue: int
+  + maxValue: int
+  + validFrom: Date
+  --
+  + limitsFor(p: Punishment): Range
+}
+
+class GeneralPartRule <<entity>> {
+  + code: string
+  + coefficient: decimal
+  + base: RuleBase
+  --
+  + applies(c: Case): boolean
+  + adjust(r: Range): Range
+}
+
+class LegalCheck <<entity>> {
+  + verdict: Verdict
+  + computedMin: int
+  + computedMax: int
+  + basis: string
+  --
+  + recalculate(p: Punishment): Verdict
+}
+
+enum Verdict {
+  OK
+  WARNING
+  VIOLATION
+}
+
+class Sentence <<entity>> {
+  + court: string
+  + decidedAt: Date
+  + termMonths: int
+  + features: Features
+}
+
+class SimilarSentence <<value object>> {
+  + similarity: decimal
+  + rank: int
+  --
+  + deviationFromMedian(): int
+}
+
+class Report <<aggregate root>> {
+  + caseId: CaseId
+  + storageKey: S3Key
+  + disclaimerVersion: string
+  --
+  + build(c: Case): void
+  + print(): void
+}
+
+Case "1" *-- "0..*" ExtractedField
+Case "1" o-- "0..1" CaseDocument
+Case "1" *-- "1" Punishment
+Case "1" *-- "1" ArticleRef
+Case "1" *-- "0..*" LegalCheck
+Case "1" o-- "0..*" SimilarSentence
+LegalCheck "0..*" --> "0..1" SanctionRule
+LegalCheck "0..*" --> "0..1" GeneralPartRule
+LegalCheck ..> Verdict
+SimilarSentence "0..*" --> "1" Sentence
+Report "1" --> "1" Case
+ArticleRef "1" <-- "0..*" SanctionRule
+@enduml

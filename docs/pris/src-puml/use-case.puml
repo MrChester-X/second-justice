@@ -1,0 +1,46 @@
+@startuml
+!include style.iuml
+left to right direction
+skinparam packageStyle rectangle
+title Диаграмма вариантов использования
+
+actor "Судья" as J
+actor "Помощник судьи" as A
+actor "Администратор" as ADM
+actor "Конвейер загрузки\nкорпуса" as ETL
+
+rectangle "ИС «Второе мнение»" {
+  usecase UC1 as "Загрузить проект\nприговора"
+  usecase UC2 as "Просмотреть извлеченные\nпараметры дела"
+  usecase UC3 as "Скорректировать\nпараметр вручную"
+  usecase UC4 as "Проверить соответствие\nсанкции и Общей части"
+  usecase UC5 as "Изменить срок\nи пересчитать"
+  usecase UC6 as "Сравнить наказание\nс практикой"
+  usecase UC7 as "Сформировать\nзаключение"
+  usecase UC8 as "Открыть заключение\nдля печати"
+  usecase UC9 as "Вести архив\nзаключений"
+  usecase UC10 as "Управлять справочником\nсанкций и правил"
+  usecase UC11 as "Обновить корпус\nприговоров"
+  usecase UC12 as "Контролировать качество\nмоделей"
+}
+
+J -- UC1
+J -- UC2
+J -- UC4
+J -- UC6
+J -- UC8
+J -- UC9
+A -- UC1
+A -- UC2
+A -- UC6
+A -- UC9
+ADM -- UC10
+ADM -- UC12
+ETL -- UC11
+
+UC3 ..> UC2 : <<extend>>
+UC5 ..> UC4 : <<extend>>
+UC4 ..> UC2 : <<include>>
+UC8 ..> UC7 : <<include>>
+UC6 ..> UC2 : <<include>>
+@enduml
